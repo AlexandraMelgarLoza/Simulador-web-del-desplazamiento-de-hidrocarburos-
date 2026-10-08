@@ -1,6 +1,6 @@
 # Simulador de trayectoria de hidrocarburos — arranque en VS Code
 
-Lee el archivo real de SEMAR (`data/dirmarea.txt`), corre un motor
+Lee el archivo  (`data/dirmarea.txt`), corre un motor
 Lagrangiano sobre él y anima la trayectoria en un mapa Leaflet.
 
 ## Qué trae el archivo de SEMAR (y qué NO)
@@ -10,18 +10,19 @@ Lagrangiano sobre él y anima la trayectoria en un mapa Leaflet.
 - `alturaolavto`: altura del oleaje de viento (m)
 - `-9.99e+08` = sin dato (tierra) → se usa como máscara de costa
 
-**No trae corrientes ni viento.** Mientras tanto, el viento se estima
+**No trae corrientes ni viento.** 
+Mientras tanto, el viento se estima
 desde el oleaje (Hs = 0.0246·U², mar desarrollado) y las corrientes
-quedan en 0. Esto está en `utils/semar_reader.py` y es una aproximación
+quedan en 0. 
+Está en `utils/semar_reader.py` y es una aproximación
 interina: hay que pedirle a SEMAR corrientes y viento reales.
 
-## Supuestos a confirmar con SEMAR
+## Supuestos a confirmar
 1. Convención de dirección: se asume "de dónde viene" (`WAVE_DIR_CONVENTION`
    en `semar_reader.py`). Si es "hacia dónde va", cambiar a `"to"`.
 2. `olavto` = oleaje generado por viento (no mar de fondo).
 3. Tercer dato del encabezado (`01OCT2026 00 3`) = horas de pronóstico.
-4. Difusión: random walk simple (placeholder hasta que el profesor
-   entregue la fórmula browniana).
+4. Difusión: random walk simple (placeholder hasta tener la fórmula browniana).
 
 ## Motor (`utils/motor.py`)
 Advección (corriente + 3% del viento, deflectado 20° por Coriolis),
@@ -34,7 +35,7 @@ tiempo del archivo (hoy 01–06 oct 2026).
 - VS Code con la extensión "Python" (Microsoft)
 
 ## 2. Abrir el proyecto
-1. Descomprime/copia esta carpeta `golfo-sim` donde quieras.
+1. Descomprime/copia esta carpeta 
 2. En VS Code: `Archivo > Abrir carpeta...` y selecciona `golfo-sim`.
 
 ## 3. Crear el entorno virtual
@@ -71,7 +72,7 @@ y haz clic en el mar para correr el motor sobre el archivo de SEMAR.
 `SEMAR_FILE`.)
 
 ## 6. Probar con tu propio archivo
-Usa el botón "Subir TXT de SEMAR" en la página. Debe tener el formato:
+Usa el botón "Subir TXT de SEMAR" en la página. Debe tener el  siguiente formato:
 
 ```
 fecha_hora, latitud, longitud
