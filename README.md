@@ -98,11 +98,3 @@ golfo-sim/
     ├── dirmarea.txt        # archivo real de SEMAR
     └── sample_spill.txt    # trayectoria generada por el motor (ejemplo)
 ```
-
-## 8. Próximos pasos sugeridos (según el plan del equipo)
-1. Reemplazar la animación "conecta los puntos" por el motor Lagrangiano
-   real (advección por corriente/viento, difusión, batimetría, varamiento).
-2. Montar el servidor Linux de pruebas (Ubuntu + Nginx + Gunicorn) y
-   documentar los pasos.
-3. Decidir con la Marina el formato real del TXT y el método de
-   vinculación (enlace vs. iframe).
