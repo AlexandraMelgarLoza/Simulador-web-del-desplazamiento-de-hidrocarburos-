@@ -24,16 +24,20 @@ const statusText = document.getElementById('status-text');
 const warningsList = document.getElementById('warnings-list');
 const fileInput = document.getElementById('file-input');
 
+// Colores tomados de la paleta definida en style.css (:root)
+const rootStyle = getComputedStyle(document.documentElement);
+const token = (name) => rootStyle.getPropertyValue(name).trim();
+
 const spillIcon = L.divIcon({
   className: 'spill-marker',
-  html: '<div style="width:16px;height:16px;border-radius:50%;background:#E0A458;border:2px solid #15171C;box-shadow:0 0 0 4px rgba(224,164,88,0.25);"></div>',
+  html: '<div class="spill-dot"></div>',
   iconSize: [16, 16],
   iconAnchor: [8, 8]
 });
 
 const strandedIcon = L.divIcon({
   className: 'spill-marker',
-  html: '<div style="width:16px;height:16px;border-radius:50%;background:#C0392B;border:2px solid #15171C;box-shadow:0 0 0 4px rgba(192,57,43,0.3);"></div>',
+  html: '<div class="spill-dot stranded"></div>',
   iconSize: [16, 16],
   iconAnchor: [8, 8]
 });
@@ -54,7 +58,7 @@ function renderTrajectory(data) {
   if (pointsLayer) map.removeLayer(pointsLayer);
 
   const latlngs = points.map(p => [p.lat, p.lon]);
-  trackLine = L.polyline(latlngs, { color: '#114B5F', weight: 3, opacity: 0.8, interactive: false }).addTo(map);
+  trackLine = L.polyline(latlngs, { color: token('--track-old'), weight: 3, opacity: 0.9, interactive: false }).addTo(map);
   // maxZoom: con trayectorias cortas se conserva la costa a la vista como referencia
   map.fitBounds(trackLine.getBounds(), { padding: [30, 30], maxZoom: 9 });
 
@@ -62,7 +66,7 @@ function renderTrajectory(data) {
   pointsLayer = L.layerGroup(points.map(p =>
     L.circleMarker([p.lat, p.lon], {
       renderer: pointsRenderer, radius: 3, weight: 1,
-      color: '#0B1E33', fillColor: '#2E8BAA', fillOpacity: 0.9
+      color: token('--bg'), fillColor: token('--sea'), fillOpacity: 0.9
     }).on('click', (e) => (simMode ? simulateAt(e) : openPointPopup(nearestIndex(e))))
   )).addTo(map);
 
@@ -573,7 +577,7 @@ requestJSON('/api/field-info')
     simStart.disabled = false;
     const b = info.bounds;
     domainRect = L.rectangle([[b.lat_min, b.lon_min], [b.lat_max, b.lon_max]], {
-      color: '#E0A458', weight: 1.5, dashArray: '6 6', fill: false, interactive: false
+      color: token('--domain'), weight: 1.5, dashArray: '6 6', fill: false, interactive: false
     }).addTo(map);
     el.textContent = `Pronóstico SEMAR disponible del ${fmtDate(info.start_time)} al ${fmtDate(info.end_time)} h.`;
   })
