@@ -120,6 +120,21 @@ h1, h2 {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 .btn-full:hover { filter: brightness(1.08); }
+.field { display: block; font-size: 0.75rem; color: #9FB3C2; margin-bottom: 4px; }
+.input {
+  width: 100%;
+  min-height: 44px;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--navy);
+  color: var(--foam);
+  font: inherit;
+  font-size: 0.85rem;
+  color-scheme: dark;
+}
+.input:invalid { border-color: #E05A47; }
 .hint { font-size: 0.72rem; color: #8FA3B0; margin: 6px 0 0; }
 
 #timeline { width: 100%; accent-color: var(--amber); }

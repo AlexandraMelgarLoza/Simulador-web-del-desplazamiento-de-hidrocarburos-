@@ -41,6 +41,8 @@
 
     <section class="panel-block">
       <h2>Motor Lagrangiano</h2>
+      <label class="field" for="sim-start">Inicio del derrame</label>
+      <input type="datetime-local" id="sim-start" class="input" step="3600" disabled>
       <button id="btn-sim-mode" class="btn-full"><span class="spinner" aria-hidden="true"></span><span id="sim-label">Simular desde un punto</span></button>
       <p class="hint">Actívalo y haz clic en el mar para elegir dónde ocurre el derrame. Se simulan hasta 120 h con el pronóstico de SEMAR.</p>
       <p id="field-info" class="hint"></p>

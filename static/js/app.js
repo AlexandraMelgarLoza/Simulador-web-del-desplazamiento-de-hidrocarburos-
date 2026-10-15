@@ -34,7 +34,9 @@ const strandedIcon = L.divIcon({
 });
 
 function fmtDate(iso) {
-  return new Date(iso).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return new Date(iso).toLocaleString('es-MX', {
+    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+  });
 }
 
 function renderTrajectory(data) {
@@ -131,7 +133,7 @@ function domainText() {
 
 function windowText() {
   if (!fieldInfo) return 'dentro de la ventana del pronóstico';
-  return `del ${fmtDate(fieldInfo.start_time)} al ${fmtDate(fieldInfo.end_time)}`;
+  return `del ${fmtDate(fieldInfo.start_time)} al ${fmtDate(fieldInfo.end_time)} h`;
 }
 
 // Traduce el mensaje técnico del servidor a causa + qué hacer
@@ -236,8 +238,29 @@ function setSimBusy(on) {
   else setSimMode(false);
 }
 
+// --- Hora de inicio, limitada a la ventana del pronóstico ---
+const simStart = document.getElementById('sim-start');
+
+// Devuelve la hora elegida en formato ISO, o null si está fuera de la ventana
+function chosenStartTime() {
+  if (!fieldInfo) return undefined;
+  const v = simStart.value || fieldInfo.start_time;
+  if (v < fieldInfo.start_time || v > fieldInfo.end_time) return null;
+  return v;
+}
+
+simStart.addEventListener('change', () => {
+  if (chosenStartTime() === null) showNotice(...explainError('ventana'));
+  else hideNotice();
+});
+
 simBtn.addEventListener('click', () => {
   if (simBusy) return;
+  if (!simMode && chosenStartTime() === null) {
+    showNotice(...explainError('ventana'));
+    simStart.focus();
+    return;
+  }
   setSimMode(!simMode);
   if (!simMode) return;
   hideNotice();
@@ -263,6 +286,12 @@ map.on('click', async (e) => {
     showNotice(...explainError('fuera del dominio'));
     return;
   }
+  const startTime = chosenStartTime();
+  if (startTime === null) {
+    setSimMode(false);
+    showNotice(...explainError('ventana'));
+    return;
+  }
 
   hideNotice();
   setSimBusy(true);
@@ -274,7 +303,7 @@ map.on('click', async (e) => {
       body: JSON.stringify({
         lat: lat,
         lon: lng,
-        start_time: fieldInfo ? fieldInfo.start_time : undefined,
+        start_time: startTime,
         duration_hours: 120,
         dt_hours: 1
       })
@@ -303,7 +332,11 @@ requestJSON('/api/field-info')
       return;
     }
     fieldInfo = info;
-    el.textContent = `Pronóstico SEMAR: ${fmtDate(info.start_time)} a ${fmtDate(info.end_time)}.`;
+    simStart.min = info.start_time;
+    simStart.max = info.end_time;
+    simStart.value = info.start_time;
+    simStart.disabled = false;
+    el.textContent = `Pronóstico SEMAR disponible del ${fmtDate(info.start_time)} al ${fmtDate(info.end_time)} h.`;
   })
   .catch(() => showNotice(...NETWORK_ERROR));
 
