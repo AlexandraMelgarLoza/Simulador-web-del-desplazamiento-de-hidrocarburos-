@@ -1,8 +1,12 @@
 // Mapa centrado en la Sonda de Campeche
 const map = L.map('map', { zoomControl: true }).setView([19.3, -92.0], 7);
 
+// Mapa base: OpenStreetMap atenuado con un filtro CSS (--map-tint en style.css) para
+// que el mar y la trayectoria dominen. CARTO Dark Matter ya exige clave de API; si se
+// consigue una, basta con cambiar la URL y la atribución aquí.
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '&copy; OpenStreetMap contributors',
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  className: 'basemap',
   maxZoom: 12
 }).addTo(map);
 

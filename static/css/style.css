@@ -28,7 +28,8 @@
   --stranded-soft: rgba(255, 111, 97, 0.18);
   --danger: var(--stranded);
 
-  /* Mapa */
+  /* Mapa: OSM pasado a oscuro y teñido de azul pizarra; la tierra queda casi negra */
+  --map-tint: grayscale(1) invert(1) sepia(0.6) hue-rotate(175deg) saturate(1.8) brightness(0.78) contrast(1.3);
   --track-old: #7A5B34;
   --domain: var(--text-2);
 
@@ -325,6 +326,7 @@ body.dragging .map-wrap::after {
 
 .map-wrap { position: relative; }
 #map { width: 100%; height: 100%; background: var(--bg); }
+.basemap { filter: var(--map-tint); }
 
 .notice {
   position: absolute;
