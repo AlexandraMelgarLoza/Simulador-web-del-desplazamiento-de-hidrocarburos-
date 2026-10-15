@@ -106,7 +106,7 @@ h1, h2 {
   overflow: hidden;
 }
 .btn-speed {
-  min-width: 40px;
+  min-width: 36px;
   height: 44px;
   border: none;
   background: transparent;
@@ -334,7 +334,7 @@ body.dragging .map-wrap::after {
   position: absolute;
   left: 10px;
   bottom: 10px;
-  max-width: min(460px, calc(100% - 20px));
+  max-width: min(460px, calc(100% - 220px));  /* deja libre la leyenda */
   z-index: 700;
   margin: 0;
   padding: 6px 10px;
@@ -354,6 +354,14 @@ body.dragging .map-wrap::after {
 .pt-popup table { border-collapse: collapse; }
 .pt-popup th { text-align: left; font-weight: 500; color: #9FB3C2; padding: 2px 12px 2px 0; }
 .pt-popup td { padding: 2px 0; }
+
+/* --- Modo compacto (?embed=1): sin encabezado, para iframe --- */
+.embed .topbar,
+.embed .eco { display: none; }
+.embed .layout { grid-template-columns: 300px 1fr; }
+.embed .panel { padding: 14px; }
+.embed .panel-block { margin-bottom: 18px; }
+.embed .dropzone { padding: 10px; }
 
 /* --- Celular / pantallas angostas --- */
 @media (max-width: 768px) {
