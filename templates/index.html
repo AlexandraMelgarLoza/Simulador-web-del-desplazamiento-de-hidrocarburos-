@@ -32,10 +32,24 @@
     <section class="panel-block transport-block">
       <h2>Reproducción</h2>
       <div class="transport">
-        <button id="btn-play" class="btn-icon" aria-label="Reproducir">▶</button>
-        <button id="btn-pause" class="btn-icon" aria-label="Pausar">❚❚</button>
+        <button id="btn-prev" class="btn-icon" aria-label="Paso atrás" title="Paso atrás">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="2" height="10"/><path d="M14 3v10L5 8z"/></svg>
+        </button>
+        <button id="btn-play" class="btn-icon btn-play" aria-label="Reproducir" title="Reproducir">
+          <svg class="ico-play" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2v12l10-6z"/></svg>
+          <svg class="ico-pause" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="2" width="3.5" height="12"/><rect x="9.5" y="2" width="3.5" height="12"/></svg>
+        </button>
+        <button id="btn-next" class="btn-icon" aria-label="Paso adelante" title="Paso adelante">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3v10l9-5z"/><rect x="12" y="3" width="2" height="10"/></svg>
+        </button>
+        <div class="speed" role="group" aria-label="Velocidad de reproducción">
+          <button class="btn-speed active" data-speed="1" aria-pressed="true">1x</button>
+          <button class="btn-speed" data-speed="2" aria-pressed="false">2x</button>
+          <button class="btn-speed" data-speed="4" aria-pressed="false">4x</button>
+        </div>
       </div>
       <input type="range" id="timeline" min="0" max="0" value="0" step="1" aria-label="Línea de tiempo">
+      <div class="timeline-date" id="tl-date" aria-live="polite">—</div>
       <div class="timeline-label" id="timeline-label">Sin datos cargados</div>
     </section>
 

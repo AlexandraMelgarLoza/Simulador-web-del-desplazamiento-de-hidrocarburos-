@@ -79,7 +79,7 @@ h1, h2 {
   margin-bottom: 10px;
 }
 
-.transport { display: flex; gap: 8px; margin-bottom: 10px; }
+.transport { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
 .btn-icon {
   background: var(--teal);
   color: var(--foam);
@@ -91,6 +91,33 @@ h1, h2 {
   font-size: 0.9rem;
 }
 .btn-icon:hover { background: #166279; }
+.btn-icon:disabled { opacity: 0.4; cursor: default; background: var(--teal); }
+.btn-icon svg { width: 16px; height: 16px; fill: currentColor; vertical-align: middle; }
+.btn-play { background: var(--amber); color: var(--oil); }
+.btn-play:hover { background: #E8B571; }
+.btn-play .ico-pause, .btn-play.playing .ico-play { display: none; }
+.btn-play.playing .ico-pause { display: inline; }
+
+.speed {
+  display: flex;
+  margin-left: auto;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.btn-speed {
+  min-width: 40px;
+  height: 44px;
+  border: none;
+  background: transparent;
+  color: #9FB3C2;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-speed + .btn-speed { border-left: 1px solid var(--line); }
+.btn-speed.active { background: var(--line); color: var(--foam); }
 
 .btn-full {
   width: 100%;
@@ -138,7 +165,8 @@ h1, h2 {
 .hint { font-size: 0.72rem; color: #8FA3B0; margin: 6px 0 0; }
 
 #timeline { width: 100%; accent-color: var(--amber); }
-.timeline-label { font-size: 0.78rem; color: #9FB3C2; margin-top: 6px; }
+.timeline-date { font-family: 'Space Grotesk', sans-serif; font-size: 1rem; font-weight: 600; margin-top: 6px; }
+.timeline-label { font-size: 0.75rem; color: #9FB3C2; margin-top: 2px; }
 
 .status-text { font-size: 0.85rem; line-height: 1.4; color: var(--foam); }
 .warnings-list {
@@ -266,7 +294,7 @@ h1, h2 {
 
 /* --- Celular / pantallas angostas --- */
 @media (max-width: 768px) {
-  body { height: auto; min-height: 100vh; overflow-x: hidden; overflow-y: auto; padding-bottom: 112px; }
+  body { height: auto; min-height: 100vh; overflow-x: hidden; overflow-y: auto; padding-bottom: 136px; }
 
   .topbar { padding: 10px 16px; gap: 12px; }
   .brand h1 { font-size: 1rem; }
@@ -289,9 +317,11 @@ h1, h2 {
     border-top: 1px solid var(--line);
   }
   .transport-block h2 { display: none; }
-  .transport { margin-bottom: 6px; }
-  #timeline { height: 28px; }
-  .timeline-label { margin-top: 0; }
+  .transport { margin-bottom: 4px; }
+  .btn-speed { min-width: 44px; }
+  #timeline { height: 28px; display: block; }
+  .timeline-date { display: inline; margin: 0 8px 0 0; font-size: 0.9rem; }
+  .timeline-label { display: inline; margin: 0; }
 
   .notice {
   position: absolute;

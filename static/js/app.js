@@ -40,6 +40,7 @@ function fmtDate(iso) {
 }
 
 function renderTrajectory(data) {
+  stop();
   points = data.points;
 
   if (trackLine) map.removeLayer(trackLine);
@@ -132,36 +133,72 @@ document.getElementById('btn-export').addEventListener('click', () => {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 });
 
+const STATE_TEXT = { activo: 'en el mar', varado: 'varado en costa', fuera_dominio: 'fuera del área' };
+
 function setFrame(i) {
   if (!points.length) return;
   currentIndex = Math.max(0, Math.min(i, points.length - 1));
   const p = points[currentIndex];
   spillMarker.setLatLng([p.lat, p.lon]);
-  spillMarker.setIcon(p.extra && p.extra.estado === 'varado' ? strandedIcon : spillIcon);
+  spillMarker.setIcon(stateOf(p) === 'varado' ? strandedIcon : spillIcon);
   timeline.value = currentIndex;
-  timelineLabel.textContent = `${new Date(p.t).toLocaleString('es-MX')}  (punto ${currentIndex + 1}/${points.length})`;
+  const h = (new Date(p.t) - new Date(points[0].t)) / 3600000;
+  const state = STATE_TEXT[stateOf(p)];
+  tlDate.textContent = fmtDate(p.t);
+  timelineLabel.textContent =
+    `+${h.toFixed(0)} h · punto ${currentIndex + 1} de ${points.length}${state ? ` · ${state}` : ''}`;
+  btnPrev.disabled = currentIndex === 0;
+  btnNext.disabled = currentIndex === points.length - 1;
 }
 
-document.getElementById('btn-play').addEventListener('click', () => {
-  if (playTimer || !points.length) return;
-  playTimer = setInterval(() => {
-    if (currentIndex >= points.length - 1) {
-      clearInterval(playTimer);
-      playTimer = null;
-      return;
-    }
-    setFrame(currentIndex + 1);
-  }, 150);
-});
+// --- Reproducción: play/pausa, pasos y velocidad ---
+const btnPlay = document.getElementById('btn-play');
+const btnPrev = document.getElementById('btn-prev');
+const btnNext = document.getElementById('btn-next');
+const tlDate = document.getElementById('tl-date');
+const BASE_STEP_MS = 150;
+let speed = 1;
 
-document.getElementById('btn-pause').addEventListener('click', () => {
+function setPlayButton(playing) {
+  btnPlay.classList.toggle('playing', playing);
+  btnPlay.setAttribute('aria-label', playing ? 'Pausar' : 'Reproducir');
+  btnPlay.title = playing ? 'Pausar' : 'Reproducir';
+}
+
+function stop() {
   clearInterval(playTimer);
   playTimer = null;
+  setPlayButton(false);
+}
+
+function play() {
+  if (!points.length) return;
+  if (currentIndex >= points.length - 1) setFrame(0);  // al final, vuelve a empezar
+  clearInterval(playTimer);
+  playTimer = setInterval(() => {
+    if (currentIndex >= points.length - 1) { stop(); return; }
+    setFrame(currentIndex + 1);
+  }, BASE_STEP_MS / speed);
+  setPlayButton(true);
+}
+
+btnPlay.addEventListener('click', () => (playTimer ? stop() : play()));
+btnPrev.addEventListener('click', () => { stop(); setFrame(currentIndex - 1); });
+btnNext.addEventListener('click', () => { stop(); setFrame(currentIndex + 1); });
+
+document.querySelectorAll('.btn-speed').forEach(btn => {
+  btn.addEventListener('click', () => {
+    speed = Number(btn.dataset.speed);
+    document.querySelectorAll('.btn-speed').forEach(b => {
+      b.classList.toggle('active', b === btn);
+      b.setAttribute('aria-pressed', b === btn);
+    });
+    if (playTimer) play();  // aplica la nueva velocidad sin detenerse
+  });
 });
 
 timeline.addEventListener('input', (e) => {
-  clearInterval(playTimer);
-  playTimer = null;
+  stop();
   setFrame(Number(e.target.value));
 });
 
