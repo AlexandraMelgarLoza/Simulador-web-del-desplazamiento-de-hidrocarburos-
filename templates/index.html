@@ -41,7 +41,7 @@
 
     <section class="panel-block">
       <h2>Motor Lagrangiano</h2>
-      <button id="btn-sim-mode" class="btn-full">Simular desde un punto</button>
+      <button id="btn-sim-mode" class="btn-full"><span class="spinner" aria-hidden="true"></span><span id="sim-label">Simular desde un punto</span></button>
       <p class="hint">Actívalo y haz clic en el mar para elegir dónde ocurre el derrame. Se simulan hasta 120 h con el pronóstico de SEMAR.</p>
       <p id="field-info" class="hint"></p>
     </section>
@@ -65,6 +65,13 @@
 
   <section class="map-wrap">
     <div id="map"></div>
+    <div id="notice" class="notice" role="alert" hidden>
+      <div class="notice-body">
+        <strong id="notice-title"></strong>
+        <p id="notice-text"></p>
+      </div>
+      <button id="notice-close" class="notice-close" aria-label="Cerrar aviso">×</button>
+    </div>
     <p class="disclaimer" role="note">Resultados orientativos: el pronóstico de SEMAR no incluye corrientes ni viento reales.</p>
   </section>
 
