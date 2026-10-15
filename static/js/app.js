@@ -12,6 +12,11 @@ let spillMarker = null;
 let playTimer = null;
 let currentIndex = 0;
 let fieldInfo = null;
+let pointsLayer = null;
+let domainRect = null;
+
+// Lienzo con tolerancia amplia para que los puntos se puedan tocar en el celular
+const pointsRenderer = L.canvas({ tolerance: 8 });
 
 const timeline = document.getElementById('timeline');
 const timelineLabel = document.getElementById('timeline-label');
@@ -43,14 +48,27 @@ function renderTrajectory(data) {
   stop();
   points = data.points;
 
+  map.closePopup();
   if (trackLine) map.removeLayer(trackLine);
   if (spillMarker) map.removeLayer(spillMarker);
+  if (pointsLayer) map.removeLayer(pointsLayer);
 
   const latlngs = points.map(p => [p.lat, p.lon]);
-  trackLine = L.polyline(latlngs, { color: '#114B5F', weight: 3, opacity: 0.8 }).addTo(map);
-  map.fitBounds(trackLine.getBounds(), { padding: [30, 30] });
+  trackLine = L.polyline(latlngs, { color: '#114B5F', weight: 3, opacity: 0.8, interactive: false }).addTo(map);
+  // maxZoom: con trayectorias cortas se conserva la costa a la vista como referencia
+  map.fitBounds(trackLine.getBounds(), { padding: [30, 30], maxZoom: 9 });
 
-  spillMarker = L.marker(latlngs[0], { icon: spillIcon }).addTo(map);
+  // Un punto por paso de tiempo; al tocarlo muestra sus datos
+  pointsLayer = L.layerGroup(points.map(p =>
+    L.circleMarker([p.lat, p.lon], {
+      renderer: pointsRenderer, radius: 3, weight: 1,
+      color: '#0B1E33', fillColor: '#2E8BAA', fillOpacity: 0.9
+    }).on('click', (e) => (simMode ? simulateAt(e) : openPointPopup(nearestIndex(e))))
+  )).addTo(map);
+
+  spillMarker = L.marker(latlngs[0], { icon: spillIcon, keyboard: true, title: 'Posición actual' })
+    .on('click', (e) => (simMode ? simulateAt(e) : openPointPopup(currentIndex)))
+    .addTo(map);
 
   timeline.max = points.length - 1;
   currentIndex = 0;
@@ -66,13 +84,48 @@ function renderTrajectory(data) {
   });
 }
 
+// --- Ventana emergente con los datos de un punto ---
+const STATE_NAMES = { activo: 'En el mar', varado: 'Varado en costa', fuera_dominio: 'Fuera del área del pronóstico' };
+
+function pointPopupHtml(p, i) {
+  const wind = p.extra && p.extra.viento_ms;
+  const state = STATE_NAMES[stateOf(p)] || 'Sin dato';
+  const row = (k, v) => `<tr><th>${k}</th><td>${v}</td></tr>`;
+  return `<div class="pt-popup"><strong>Punto ${i + 1} de ${points.length}</strong><table>` +
+    row('Hora', fmtDate(p.t)) +
+    row('Latitud', `${Math.abs(p.lat).toFixed(4)}° ${p.lat >= 0 ? 'N' : 'S'}`) +
+    row('Longitud', `${Math.abs(p.lon).toFixed(4)}° ${p.lon <= 0 ? 'O' : 'E'}`) +
+    row('Estado', state) +
+    row('Viento', (wind === undefined || wind === null || wind === '') ? 'Sin dato' : `${Number(wind).toFixed(1)} m/s`) +
+    '</table></div>';
+}
+
+// Los puntos se enciman con zoom bajo: se elige el más cercano al clic
+function nearestIndex(e) {
+  const q = map.mouseEventToLayerPoint(e.originalEvent);
+  let best = 0;
+  let bestDist = Infinity;
+  points.forEach((p, i) => {
+    const d = map.latLngToLayerPoint([p.lat, p.lon]).distanceTo(q);
+    if (d < bestDist) { bestDist = d; best = i; }
+  });
+  return best;
+}
+
+function openPointPopup(i) {
+  if (simMode || simBusy) return;  // en modo simular, el clic es para elegir el punto de inicio
+  const p = points[i];
+  L.popup({ offset: [0, -4] }).setLatLng([p.lat, p.lon]).setContent(pointPopupHtml(p, i)).openOn(map);
+}
+
 // --- Leyenda del marcador ---
 const legend = L.control({ position: 'bottomright' });
 legend.onAdd = () => {
   const div = L.DomUtil.create('div', 'legend');
   div.innerHTML =
     '<div class="legend-row"><span class="dot dot-sea"></span>En el mar</div>' +
-    '<div class="legend-row"><span class="dot dot-stranded"></span>Varado en costa</div>';
+    '<div class="legend-row"><span class="dot dot-stranded"></span>Varado en costa</div>' +
+    '<div class="legend-row"><span class="dash"></span>Área del pronóstico SEMAR</div>';
   return div;
 };
 legend.addTo(map);
@@ -247,7 +300,7 @@ function explainError(msg) {
   }
   if (m.includes('fuera del dominio')) {
     return ['El punto está fuera del área del pronóstico',
-      `El pronóstico de SEMAR solo cubre ${domainText()}. Elige un punto dentro de esa zona.`];
+      `El pronóstico de SEMAR solo cubre ${domainText()}. Elige un punto dentro del rectángulo punteado del mapa.`];
   }
   if (m.includes('ventana')) {
     return ['La hora de inicio está fuera del pronóstico',
@@ -365,6 +418,7 @@ simBtn.addEventListener('click', () => {
   setSimMode(!simMode);
   if (!simMode) return;
   hideNotice();
+  map.closePopup();
   const r = map.getContainer().getBoundingClientRect();
   if (r.bottom < 80 || r.top > window.innerHeight - 80) {
     document.querySelector('.map-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -377,9 +431,10 @@ function outsideDomain(lat, lon) {
   return lat < b.lat_min || lat > b.lat_max || lon < b.lon_min || lon > b.lon_max;
 }
 
-map.on('click', async (e) => {
+// e: clic en el mapa, en un punto de la trayectoria o en el marcador
+async function simulateAt(e) {
   if (!simMode || simBusy) return;
-  const { lat, lng } = e.latlng;
+  const { lat, lng } = e.originalEvent ? map.mouseEventToLatLng(e.originalEvent) : e.latlng;
 
   if (outsideDomain(lat, lng)) {
     setSimMode(false);
@@ -421,7 +476,9 @@ map.on('click', async (e) => {
   } finally {
     setSimBusy(false);
   }
-});
+}
+
+map.on('click', simulateAt);
 
 // Metadatos del archivo de SEMAR (ventana de tiempo del pronóstico)
 requestJSON('/api/field-info')
@@ -437,6 +494,10 @@ requestJSON('/api/field-info')
     simStart.max = info.end_time;
     simStart.value = info.start_time;
     simStart.disabled = false;
+    const b = info.bounds;
+    domainRect = L.rectangle([[b.lat_min, b.lon_min], [b.lat_max, b.lon_max]], {
+      color: '#E0A458', weight: 1.5, dashArray: '6 6', fill: false, interactive: false
+    }).addTo(map);
     el.textContent = `Pronóstico SEMAR disponible del ${fmtDate(info.start_time)} al ${fmtDate(info.end_time)} h.`;
   })
   .catch(() => showNotice(...NETWORK_ERROR));

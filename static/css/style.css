@@ -209,6 +209,7 @@ h1, h2 {
   flex-shrink: 0;
 }
 .dot-sea { background: #E0A458; }
+.dash { display: inline-block; width: 12px; border-top: 2px dashed #E0A458; flex-shrink: 0; }
 .dot-stranded { background: #C0392B; }
 
 .eco summary {
@@ -291,6 +292,12 @@ h1, h2 {
 
 .leaflet-popup-content-wrapper { background: var(--oil); color: var(--foam); }
 .leaflet-popup-tip { background: var(--oil); }
+.leaflet-container a.leaflet-popup-close-button { color: #9FB3C2; width: 32px; height: 32px; font-size: 20px; line-height: 32px; }
+.pt-popup { font-family: 'Inter', sans-serif; font-size: 0.8rem; }
+.pt-popup strong { display: block; margin-bottom: 6px; color: var(--amber); }
+.pt-popup table { border-collapse: collapse; }
+.pt-popup th { text-align: left; font-weight: 500; color: #9FB3C2; padding: 2px 12px 2px 0; }
+.pt-popup td { padding: 2px 0; }
 
 /* --- Celular / pantallas angostas --- */
 @media (max-width: 768px) {
