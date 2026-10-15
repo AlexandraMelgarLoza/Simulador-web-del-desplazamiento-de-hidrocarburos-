@@ -55,11 +55,8 @@ function renderTrajectory(data) {
   currentIndex = 0;
   setFrame(0);
 
-  const last = points[points.length - 1];
-  const hours = (new Date(last.t) - new Date(points[0].t)) / 3600000;
-  statusText.textContent = (last.extra && last.extra.estado === 'varado')
-    ? `${points.length} puntos. La mancha llega a costa tras ${hours.toFixed(0)} h.`
-    : `${points.length} puntos cargados.`;
+  renderSummary();
+  statusText.textContent = `Trayectoria cargada: ${points.length} puntos.`;
   warningsList.innerHTML = '';
   (data.warnings || []).forEach(w => {
     const li = document.createElement('li');
@@ -67,6 +64,73 @@ function renderTrajectory(data) {
     warningsList.appendChild(li);
   });
 }
+
+// --- Leyenda del marcador ---
+const legend = L.control({ position: 'bottomright' });
+legend.onAdd = () => {
+  const div = L.DomUtil.create('div', 'legend');
+  div.innerHTML =
+    '<div class="legend-row"><span class="dot dot-sea"></span>En el mar</div>' +
+    '<div class="legend-row"><span class="dot dot-stranded"></span>Varado en costa</div>';
+  return div;
+};
+legend.addTo(map);
+
+// --- Tarjeta de resumen ---
+const STATE_LABELS = {
+  activo: '<span class="state-tag"><span class="dot dot-sea"></span>En el mar</span>',
+  varado: '<span class="state-tag"><span class="dot dot-stranded"></span>Varado en costa</span>',
+  fuera_dominio: 'Salió del área del pronóstico'
+};
+
+function stateOf(p) { return p.extra && p.extra.estado; }
+
+function renderSummary() {
+  const first = points[0];
+  const last = points[points.length - 1];
+  const state = stateOf(last);
+  const stranded = points.find(p => stateOf(p) === 'varado');
+
+  document.getElementById('sum-count').textContent = points.length;
+  document.getElementById('sum-state').innerHTML = STATE_LABELS[state] || 'Sin dato en el archivo';
+
+  const arrival = document.getElementById('sum-arrival');
+  arrival.hidden = document.getElementById('sum-arrival-label').hidden = !stranded;
+  if (stranded) {
+    const h = (new Date(stranded.t) - new Date(first.t)) / 3600000;
+    arrival.textContent = `${fmtDate(stranded.t)} (tras ${h.toFixed(0)} h)`;
+  }
+  document.getElementById('sum-start').textContent = `${fmtCoord(first.lat, first.lon)} · ${fmtDate(first.t)}`;
+  document.getElementById('sum-end').textContent = `${fmtCoord(last.lat, last.lon)} · ${fmtDate(last.t)}`;
+  document.getElementById('summary').hidden = false;
+}
+
+// Exporta en el mismo formato que acepta /api/upload (fecha_hora, latitud, longitud, …)
+function trajectoryTxt() {
+  const extraCols = [];
+  points.forEach(p => Object.keys(p.extra || {}).forEach(k => {
+    if (!extraCols.includes(k)) extraCols.push(k);
+  }));
+  const clean = v => (v === undefined || v === null) ? '' : String(v).replace(/[,\r\n]/g, ' ');
+  const rows = [['fecha_hora', 'latitud', 'longitud', ...extraCols].join(', ')];
+  points.forEach(p => {
+    rows.push([p.t.slice(0, 16).replace('T', ' '), p.lat.toFixed(4), p.lon.toFixed(4),
+      ...extraCols.map(k => clean(p.extra[k]))].join(', '));
+  });
+  return rows.join('\n') + '\n';
+}
+
+document.getElementById('btn-export').addEventListener('click', () => {
+  if (!points.length) return;
+  const blob = new Blob([trajectoryTxt()], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `trayectoria_${points[0].t.slice(0, 16).replace(/[-:]/g, '').replace('T', '_')}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
 
 function setFrame(i) {
   if (!points.length) return;

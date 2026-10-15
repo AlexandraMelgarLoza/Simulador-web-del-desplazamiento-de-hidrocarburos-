@@ -150,6 +150,39 @@ h1, h2 {
 }
 .warnings-list li { margin-bottom: 4px; }
 
+.summary {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 12px;
+  margin: 0 0 12px;
+  font-size: 0.8rem;
+}
+.summary dt { color: #9FB3C2; }
+.summary dd { margin: 0; color: var(--foam); }
+.summary [hidden] { display: none; }
+.state-tag { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.btn-secondary { background: transparent; border: 1px solid var(--amber); color: var(--amber); }
+
+.legend {
+  background: rgba(21, 23, 28, 0.88);
+  color: var(--foam);
+  padding: 8px 10px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  line-height: 1.7;
+}
+.legend-row { display: flex; align-items: center; gap: 8px; }
+.dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--oil);
+  flex-shrink: 0;
+}
+.dot-sea { background: #E0A458; }
+.dot-stranded { background: #C0392B; }
+
 .eco summary {
   cursor: pointer;
   list-style: none;
