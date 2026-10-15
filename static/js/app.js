@@ -75,6 +75,7 @@ function renderTrajectory(data) {
   setFrame(0);
 
   renderSummary();
+  showFileErrors([]);
   statusText.textContent = `Trayectoria cargada: ${points.length} puntos.`;
   warningsList.innerHTML = '';
   (data.warnings || []).forEach(w => {
@@ -336,20 +337,58 @@ async function requestJSON(url, options) {
   return { ok: res.ok, data };
 }
 
+// --- Subida de archivo: botón, arrastrar y soltar, y líneas con error ---
+const dropzone = document.getElementById('dropzone');
+const dropLabel = document.getElementById('drop-label');
+const fileErrors = document.getElementById('file-errors');
+const fileErrorsCount = document.getElementById('file-errors-count');
+const fileErrorsList = document.getElementById('file-errors-list');
+
+// En pantallas táctiles no se puede arrastrar: se invita a tocar
+const touchOnly = window.matchMedia('(hover: none)').matches;
+const DROP_LABEL = touchOnly ? 'Toca para elegir tu TXT' : 'Arrastra aquí tu TXT';
+dropLabel.textContent = DROP_LABEL;
+document.getElementById('drop-hint').hidden = touchOnly;
+
+// "linea 3: fecha_hora invalida, se omite" -> "Línea 3: fecha_hora inválida, se omite"
+function prettyLineError(w) {
+  return w.replace(/^linea/i, 'Línea').replace(/invalida/g, 'inválida');
+}
+
+function showFileErrors(warnings) {
+  fileErrorsList.innerHTML = '';
+  warnings.forEach(w => {
+    const li = document.createElement('li');
+    li.textContent = prettyLineError(w);
+    fileErrorsList.appendChild(li);
+  });
+  fileErrorsCount.textContent = warnings.length;
+  fileErrors.open = false;
+  fileErrors.hidden = !warnings.length;
+}
+
 function invalidLinesNotice(data) {
   const bad = (data.warnings || []).length;
   if (!bad) return;
   showNotice(`Se omitieron ${bad} ${bad === 1 ? 'línea' : 'líneas'} del archivo`,
-    `Se cargaron ${data.points.length} puntos válidos. Corrige las líneas indicadas en el panel ` +
-    '«Estado» y vuelve a subir el archivo si las necesitas.', 'warn');
+    `Se cargaron ${data.points.length} puntos válidos. Abre «Líneas con error» en el panel para ver ` +
+    'cuáles son, corrígelas y vuelve a subir el archivo si las necesitas.', 'warn');
 }
 
-fileInput.addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  fileInput.value = '';  // permite volver a subir el mismo archivo ya corregido
+let uploadBusy = false;
+
+async function uploadFile(file) {
+  if (!file || uploadBusy) return;
+  if (!/\.(txt|csv)$/i.test(file.name)) {
+    showNotice('Formato de archivo no admitido',
+      `«${file.name}» no es .txt ni .csv. Sube un texto separado por comas con el encabezado «fecha_hora, latitud, longitud».`);
+    return;
+  }
 
   hideNotice();
+  uploadBusy = true;
+  dropzone.classList.add('busy');
+  dropLabel.textContent = `Validando «${file.name}»…`;
   statusText.textContent = 'Subiendo y validando archivo…';
   const formData = new FormData();
   formData.append('file', file);
@@ -358,16 +397,54 @@ fileInput.addEventListener('change', async (e) => {
     const { ok, data } = await requestJSON('/api/upload', { method: 'POST', body: formData });
     if (!ok) {
       statusText.textContent = 'No se cargó el archivo.';
-      warningsList.innerHTML = '';
       showNotice(...explainError(data.error));
       return;
     }
-    renderTrajectory(data);
+    renderTrajectory({ points: data.points });
+    statusText.textContent = `Archivo «${file.name}» cargado: ${data.points.length} puntos.`;
+    showFileErrors(data.warnings || []);
     invalidLinesNotice(data);
   } catch (err) {
     statusText.textContent = 'No se cargó el archivo.';
     showNotice(...NETWORK_ERROR);
+  } finally {
+    uploadBusy = false;
+    dropzone.classList.remove('busy');
+    dropLabel.textContent = DROP_LABEL;
   }
+}
+
+fileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  fileInput.value = '';  // permite volver a subir el mismo archivo ya corregido
+  uploadFile(file);
+});
+
+// Se acepta soltar el archivo en cualquier parte de la página
+let dragDepth = 0;
+const hasFiles = (e) => e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files');
+
+document.addEventListener('dragenter', (e) => {
+  if (!hasFiles(e)) return;
+  dragDepth++;
+  document.body.classList.add('dragging');
+});
+document.addEventListener('dragleave', (e) => {
+  if (!hasFiles(e)) return;
+  dragDepth = Math.max(0, dragDepth - 1);
+  if (!dragDepth) document.body.classList.remove('dragging');
+});
+document.addEventListener('dragover', (e) => {
+  if (!hasFiles(e)) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'copy';
+});
+document.addEventListener('drop', (e) => {
+  if (!hasFiles(e)) return;
+  e.preventDefault();
+  dragDepth = 0;
+  document.body.classList.remove('dragging');
+  uploadFile(e.dataTransfer.files[0]);
 });
 
 // --- Motor Lagrangiano: modo "clic en el mapa para simular" ---

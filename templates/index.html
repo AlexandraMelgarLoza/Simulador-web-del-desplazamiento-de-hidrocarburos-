@@ -21,7 +21,7 @@
     </div>
   </div>
   <label class="upload-btn">
-    Subir TXT de SEMAR
+    Subir trayectoria (TXT)
     <input type="file" id="file-input" accept=".txt,.csv" hidden>
   </label>
 </header>
@@ -60,6 +60,19 @@
       <button id="btn-sim-mode" class="btn-full"><span class="spinner" aria-hidden="true"></span><span id="sim-label">Simular desde un punto</span></button>
       <p class="hint">Actívalo y haz clic en el mar para elegir dónde ocurre el derrame. Se simulan hasta 120 h con el pronóstico de SEMAR.</p>
       <p id="field-info" class="hint"></p>
+    </section>
+
+    <section class="panel-block">
+      <h2>Archivo de trayectoria</h2>
+      <label class="dropzone" id="dropzone" for="file-input">
+        <strong id="drop-label">Arrastra aquí tu TXT</strong>
+        <span id="drop-hint">o haz clic para elegirlo</span>
+        <small>Columnas: fecha_hora, latitud, longitud</small>
+      </label>
+      <details class="file-errors" id="file-errors" hidden>
+        <summary>Líneas con error (<span id="file-errors-count">0</span>)</summary>
+        <ul id="file-errors-list"></ul>
+      </details>
     </section>
 
     <section class="panel-block">

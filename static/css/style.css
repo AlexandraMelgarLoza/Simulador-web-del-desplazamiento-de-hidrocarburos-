@@ -168,6 +168,62 @@ h1, h2 {
 .timeline-date { font-family: 'Space Grotesk', sans-serif; font-size: 1rem; font-weight: 600; margin-top: 6px; }
 .timeline-label { font-size: 0.75rem; color: #9FB3C2; margin-top: 2px; }
 
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 16px 12px;
+  border: 2px dashed var(--line);
+  border-radius: 6px;
+  text-align: center;
+  font-size: 0.8rem;
+  color: #9FB3C2;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.dropzone strong { color: var(--foam); font-size: 0.85rem; }
+.dropzone small { font-size: 0.7rem; color: #8FA3B0; margin-top: 4px; }
+.dropzone:hover, body.dragging .dropzone { border-color: var(--amber); background: rgba(224, 164, 88, 0.08); }
+.dropzone.busy { cursor: progress; opacity: 0.7; }
+body.dragging .map-wrap::after {
+  content: 'Suelta el archivo para cargar la trayectoria';
+  position: absolute;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(11, 30, 51, 0.75);
+  border: 3px dashed var(--amber);
+  color: var(--foam);
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.file-errors { margin-top: 10px; font-size: 0.78rem; }
+.file-errors summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  color: var(--amber);
+  font-weight: 600;
+}
+.file-errors ul {
+  list-style: none;
+  margin: 0;
+  padding: 8px 10px;
+  max-height: 180px;
+  overflow-y: auto;
+  background: var(--navy);
+  border-radius: 4px;
+  color: #C7D4DB;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.72rem;
+}
+.file-errors li + li { margin-top: 4px; }
+
 .status-text { font-size: 0.85rem; line-height: 1.4; color: var(--foam); }
 .warnings-list {
   list-style: none;
