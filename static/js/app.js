@@ -191,12 +191,13 @@ function openPointPopup(i) {
 
 // --- Leyenda del marcador (plegada de inicio en celular) ---
 const narrowScreen = window.matchMedia('(max-width: 768px)');
+const roomyMap = () => !narrowScreen.matches && map.getSize().x >= 720;
 const legend = L.control({ position: 'bottomright' });
 legend.onAdd = () => {
   const div = L.DomUtil.create('details', 'legend');
   // Los clics en la leyenda no deben llegar al mapa (en modo simular dispararían una simulación)
   L.DomEvent.disableClickPropagation(div);
-  div.open = !narrowScreen.matches;
+  div.open = roomyMap();
   div.innerHTML = '<summary class="float-head"><span class="card-title">Leyenda</span></summary>' +
     '<div class="legend-row"><span class="swatch-track"></span>Trayectoria (inicio → fin)</div>' +
     '<div class="legend-row"><span class="swatch-start"></span>Inicio · <span class="swatch-end"></span>Fin</div>' +
@@ -246,10 +247,10 @@ function setTwoLines(el, main, sub) {
   el.replaceChildren(a, b);
 }
 
-// Con el mapa angosto (iframe, tableta) el resumen empieza plegado para no tapar la trayectoria;
-// en celular va debajo del mapa y puede quedar abierto
+// El resumen empieza plegado si el mapa es angosto (iframe) para no tapar la trayectoria,
+// y en celular/tableta para que la tarjeta de Simulación quede cerca del mapa
 const summaryCard = document.getElementById('summary');
-summaryCard.open = narrowScreen.matches || map.getSize().x >= 720;
+summaryCard.open = roomyMap();
 
 // Exporta en el mismo formato que acepta /api/upload (fecha_hora, latitud, longitud, …)
 function trajectoryTxt() {

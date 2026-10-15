@@ -30,7 +30,7 @@
     </svg>
     <div class="brand-text">
       <h1>Trayectoria de hidrocarburos</h1>
-      <p class="subtitle">Sonda de Campeche <span aria-hidden="true">·</span> pronóstico Lagrangiano</p>
+      <p class="subtitle">Sonda de Campeche<span class="subtitle-extra"> <span aria-hidden="true">·</span> pronóstico Lagrangiano</span></p>
     </div>
   </div>
   <label class="upload-btn">
@@ -67,8 +67,10 @@
 
     <section class="card transport-block" aria-labelledby="h-play">
       <h2 id="h-play" class="card-title">Reproducción</h2>
-      <div class="timeline-date" id="tl-date" aria-live="polite">—</div>
-      <div class="timeline-label" id="timeline-label">Sin datos cargados</div>
+      <div class="timeline-head">
+        <div class="timeline-date" id="tl-date" aria-live="polite">—</div>
+        <div class="timeline-label" id="timeline-label">Sin datos cargados</div>
+      </div>
       <input type="range" id="timeline" min="0" max="0" value="0" step="1" aria-label="Línea de tiempo">
       <div class="transport">
         <button id="btn-prev" class="btn-icon" aria-label="Paso atrás" title="Paso atrás">
