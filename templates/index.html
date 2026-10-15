@@ -73,18 +73,6 @@
       </div>
     </section>
 
-    <section class="card" id="summary" aria-labelledby="h-summary" hidden>
-      <h2 id="h-summary" class="card-title">Resumen</h2>
-      <dl class="summary">
-        <dt>Estado final</dt><dd id="sum-state"></dd>
-        <dt id="sum-arrival-label">Llegada a costa</dt><dd id="sum-arrival"></dd>
-        <dt>Puntos</dt><dd id="sum-count"></dd>
-        <dt>Inicio</dt><dd id="sum-start"></dd>
-        <dt>Fin</dt><dd id="sum-end"></dd>
-      </dl>
-      <button id="btn-export" class="btn btn-secondary">Exportar TXT</button>
-    </section>
-
     <section class="card" aria-labelledby="h-file">
       <h2 id="h-file" class="card-title">Archivo de trayectoria</h2>
       <label class="dropzone" id="dropzone" for="file-input">
@@ -118,14 +106,38 @@
 
   <section class="map-wrap">
     <div id="map"></div>
-    <div id="notice" class="notice" role="alert" hidden>
-      <div class="notice-body">
-        <strong id="notice-title"></strong>
-        <p id="notice-text"></p>
+    <!-- Columna flotante: aviso y resumen; en celular el resumen baja debajo del mapa -->
+    <div class="map-stack">
+      <div id="notice" class="notice float" role="alert" hidden>
+        <div class="notice-body">
+          <strong id="notice-title"></strong>
+          <p id="notice-text"></p>
+        </div>
+        <button id="notice-close" class="notice-close" aria-label="Cerrar aviso">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </button>
       </div>
-      <button id="notice-close" class="notice-close" aria-label="Cerrar aviso">×</button>
+
+      <details class="float summary-card" id="summary" open hidden>
+        <summary class="float-head"><h2 class="card-title">Resumen</h2></summary>
+        <dl class="summary">
+          <dt>Estado final</dt><dd id="sum-state"></dd>
+          <dt id="sum-arrival-label">Llegada a costa</dt><dd id="sum-arrival"></dd>
+          <dt>Puntos</dt><dd id="sum-count"></dd>
+          <dt>Inicio</dt><dd id="sum-start"></dd>
+          <dt>Fin</dt><dd id="sum-end"></dd>
+        </dl>
+        <button id="btn-export" class="btn btn-secondary">
+          <svg class="btn-ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8m0 0L5 7m3 3l3-3M3 11v2h10v-2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Exportar TXT
+        </button>
+      </details>
     </div>
-    <p class="disclaimer" role="note">Resultados orientativos: el pronóstico de SEMAR no incluye corrientes ni viento reales.</p>
+
+    <p class="disclaimer float" role="note">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 7v4.5M8 4.6v.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <span><strong>Resultados orientativos</strong> · el pronóstico de SEMAR no incluye corrientes ni viento reales</span>
+    </p>
   </section>
 
 </main>

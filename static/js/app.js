@@ -167,11 +167,15 @@ function openPointPopup(i) {
   L.popup({ offset: [0, -4] }).setLatLng([p.lat, p.lon]).setContent(pointPopupHtml(p, i)).openOn(map);
 }
 
-// --- Leyenda del marcador ---
+// --- Leyenda del marcador (plegada de inicio en celular) ---
+const narrowScreen = window.matchMedia('(max-width: 768px)');
 const legend = L.control({ position: 'bottomright' });
 legend.onAdd = () => {
-  const div = L.DomUtil.create('div', 'legend');
-  div.innerHTML =
+  const div = L.DomUtil.create('details', 'legend');
+  // Los clics en la leyenda no deben llegar al mapa (en modo simular dispararían una simulación)
+  L.DomEvent.disableClickPropagation(div);
+  div.open = !narrowScreen.matches;
+  div.innerHTML = '<summary class="float-head"><span class="card-title">Leyenda</span></summary>' +
     '<div class="legend-row"><span class="swatch-track"></span>Trayectoria (inicio → fin)</div>' +
     '<div class="legend-row"><span class="swatch-start"></span>Inicio · <span class="swatch-end"></span>Fin</div>' +
     '<div class="legend-row"><span class="dot dot-sea"></span>Posición en el mar</div>' +
@@ -203,12 +207,27 @@ function renderSummary() {
   arrival.hidden = document.getElementById('sum-arrival-label').hidden = !stranded;
   if (stranded) {
     const h = (new Date(stranded.t) - new Date(first.t)) / 3600000;
-    arrival.textContent = `${fmtDate(stranded.t)} (tras ${h.toFixed(0)} h)`;
+    setTwoLines(arrival, fmtDate(stranded.t), `tras ${h.toFixed(0)} h`);
   }
-  document.getElementById('sum-start').textContent = `${fmtCoord(first.lat, first.lon)} · ${fmtDate(first.t)}`;
-  document.getElementById('sum-end').textContent = `${fmtCoord(last.lat, last.lon)} · ${fmtDate(last.t)}`;
-  document.getElementById('summary').hidden = false;
+  setTwoLines(document.getElementById('sum-start'), fmtCoord(first.lat, first.lon), fmtDate(first.t));
+  setTwoLines(document.getElementById('sum-end'), fmtCoord(last.lat, last.lon), fmtDate(last.t));
+  summaryCard.hidden = false;
 }
+
+// Dato principal y, debajo, un dato secundario más tenue
+function setTwoLines(el, main, sub) {
+  const a = document.createElement('span');
+  const b = document.createElement('span');
+  a.textContent = main;
+  b.textContent = sub;
+  b.className = 'dd-sub';
+  el.replaceChildren(a, b);
+}
+
+// Con el mapa angosto (iframe, tableta) el resumen empieza plegado para no tapar la trayectoria;
+// en celular va debajo del mapa y puede quedar abierto
+const summaryCard = document.getElementById('summary');
+summaryCard.open = narrowScreen.matches || map.getSize().x >= 720;
 
 // Exporta en el mismo formato que acepta /api/upload (fecha_hora, latitud, longitud, …)
 function trajectoryTxt() {
