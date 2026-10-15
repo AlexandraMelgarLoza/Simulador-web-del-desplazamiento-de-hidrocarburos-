@@ -27,6 +27,27 @@ const pointsRenderer = L.canvas({ tolerance: 8 });
 const timeline = document.getElementById('timeline');
 const timelineLabel = document.getElementById('timeline-label');
 const statusText = document.getElementById('status-text');
+const statusBox = document.getElementById('status');
+const statusHint = document.getElementById('status-hint');
+const mapProgress = document.getElementById('map-progress');
+const mapEmpty = document.getElementById('map-empty');
+
+// Estado con ícono: 'loading' (girando), 'ok' (listo) o 'empty' (no hay resultado; dice qué hacer)
+function setStatus(kind, text, hint = '') {
+  statusBox.dataset.kind = kind;
+  statusText.textContent = text;
+  statusHint.textContent = hint;
+  statusHint.hidden = !hint;
+}
+
+// Barra de progreso sobre el mapa mientras se simula o se valida un archivo
+function setMapBusy(on) {
+  mapProgress.hidden = !on;
+  map.getContainer().classList.toggle('is-busy', on);
+}
+
+const SIM_FAILED = ['La simulación no se ejecutó.',
+  'Pulsa «Simular desde un punto» y elige otro lugar en el mar.'];
 const warningsList = document.getElementById('warnings-list');
 const fileInput = document.getElementById('file-input');
 
@@ -124,7 +145,8 @@ function renderTrajectory(data) {
 
   renderSummary();
   showFileErrors([]);
-  statusText.textContent = `Trayectoria cargada: ${points.length} puntos.`;
+  mapEmpty.hidden = true;
+  setStatus('ok', `Trayectoria cargada: ${points.length} puntos.`);
   warningsList.innerHTML = '';
   (data.warnings || []).forEach(w => {
     const li = document.createElement('li');
@@ -463,26 +485,28 @@ async function uploadFile(file) {
   uploadBusy = true;
   dropzone.classList.add('busy');
   dropLabel.textContent = `Validando «${file.name}»…`;
-  statusText.textContent = 'Subiendo y validando archivo…';
+  setStatus('loading', 'Subiendo y validando archivo…');
+  setMapBusy(true);
   const formData = new FormData();
   formData.append('file', file);
 
   try {
     const { ok, data } = await requestJSON('/api/upload', { method: 'POST', body: formData });
     if (!ok) {
-      statusText.textContent = 'No se cargó el archivo.';
+      setStatus('empty', 'No se cargó el archivo.', 'Revisa el aviso del mapa, corrige el archivo y vuelve a subirlo.');
       showNotice(...explainError(data.error));
       return;
     }
     renderTrajectory({ points: data.points });
-    statusText.textContent = `Archivo «${file.name}» cargado: ${data.points.length} puntos.`;
+    setStatus('ok', `Archivo «${file.name}» cargado: ${data.points.length} puntos.`);
     showFileErrors(data.warnings || []);
     invalidLinesNotice(data);
   } catch (err) {
-    statusText.textContent = 'No se cargó el archivo.';
+    setStatus('empty', 'No se cargó el archivo.', 'Revisa tu conexión y vuelve a subirlo.');
     showNotice(...NETWORK_ERROR);
   } finally {
     uploadBusy = false;
+    setMapBusy(false);
     dropzone.classList.remove('busy');
     dropLabel.textContent = DROP_LABEL;
   }
@@ -539,6 +563,7 @@ function setSimBusy(on) {
   simBtn.disabled = on;
   simBtn.classList.toggle('busy', on);
   simBtn.setAttribute('aria-busy', on);
+  setMapBusy(on);
   if (on) simLabel.textContent = 'Simulando…';
   else setSimMode(false);
 }
@@ -589,7 +614,7 @@ async function simulateAt(e) {
 
   if (outsideDomain(lat, lng)) {
     setSimMode(false);
-    statusText.textContent = 'La simulación no se ejecutó.';
+    setStatus('empty', ...SIM_FAILED);
     showNotice(...explainError('fuera del dominio'));
     return;
   }
@@ -602,7 +627,7 @@ async function simulateAt(e) {
 
   hideNotice();
   setSimBusy(true);
-  statusText.textContent = `Simulando desde ${fmtCoord(lat, lng)}…`;
+  setStatus('loading', `Simulando desde ${fmtCoord(lat, lng)}…`, 'Hasta 120 h con el pronóstico de SEMAR.');
   try {
     const { ok, data } = await requestJSON('/api/simulate', {
       method: 'POST',
@@ -616,13 +641,13 @@ async function simulateAt(e) {
       })
     });
     if (!ok) {
-      statusText.textContent = 'La simulación no se ejecutó.';
+      setStatus('empty', ...SIM_FAILED);
       showNotice(...explainError(data.error));
       return;
     }
     renderTrajectory(data);
   } catch (err) {
-    statusText.textContent = 'La simulación no se ejecutó.';
+    setStatus('empty', ...SIM_FAILED);
     showNotice(...NETWORK_ERROR);
   } finally {
     setSimBusy(false);
@@ -660,7 +685,8 @@ requestJSON('/api/sample')
     renderTrajectory(data);
   })
   .catch(() => {
-    statusText.textContent = 'No se pudo cargar la trayectoria de ejemplo. Sube un archivo o simula desde un punto.';
+    setStatus('empty', 'No se pudo cargar la trayectoria de ejemplo.', 'Sube un archivo o simula desde un punto.');
+    if (!points.length) mapEmpty.hidden = false;
   });
 
 // Panel del ecosistema: abierto en escritorio, plegado en celular

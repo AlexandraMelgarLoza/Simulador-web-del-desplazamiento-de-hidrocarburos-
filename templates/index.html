@@ -96,7 +96,17 @@
 
     <section class="card" aria-labelledby="h-status">
       <h2 id="h-status" class="card-title">Estado</h2>
-      <p id="status-text" class="status-text">Cargando trayectoria de ejemplo…</p>
+      <div class="status" id="status" data-kind="loading" aria-live="polite">
+        <span class="status-ico" aria-hidden="true">
+          <span class="spinner"></span>
+          <svg class="ico-ok" viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg class="ico-empty" viewBox="0 0 16 16"><path d="M8 14.5s-4.5-4.2-4.5-7.5a4.5 4.5 0 0 1 9 0c0 3.3-4.5 7.5-4.5 7.5z" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="7" r="1.5"/></svg>
+        </span>
+        <div>
+          <p id="status-text" class="status-text">Cargando trayectoria de ejemplo…</p>
+          <p id="status-hint" class="hint" hidden></p>
+        </div>
+      </div>
       <ul id="warnings-list" class="warnings-list"></ul>
     </section>
 
@@ -113,6 +123,18 @@
 
   <section class="map-wrap">
     <div id="map"></div>
+    <div class="map-progress" id="map-progress" role="progressbar" aria-label="Procesando" hidden></div>
+
+    <!-- Estado vacío: aparece si no hay ninguna trayectoria que mostrar -->
+    <div class="map-empty float" id="map-empty" hidden>
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <path class="empty-wave" d="M6 34c3-2.2 6-2.2 9 0s6 2.2 9 0 6-2.2 9 0 6 2.2 9 0"/>
+        <path class="empty-wave" d="M6 41c3-2.2 6-2.2 9 0s6 2.2 9 0 6-2.2 9 0 6 2.2 9 0" opacity=".5"/>
+        <path class="empty-drop" d="M24 6s-8 9-8 15a8 8 0 0 0 16 0c0-6-8-15-8-15z"/>
+      </svg>
+      <strong>Aún no hay trayectoria</strong>
+      <p>Pulsa <b>Simular desde un punto</b> y haz clic en el mar, o sube un archivo TXT.</p>
+    </div>
     <!-- Columna flotante: aviso y resumen; en celular el resumen baja debajo del mapa -->
     <div class="map-stack">
       <div id="notice" class="notice float" role="alert" hidden>
