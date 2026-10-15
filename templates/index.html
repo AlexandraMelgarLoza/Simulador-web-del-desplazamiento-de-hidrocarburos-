@@ -45,8 +45,17 @@
   <aside class="panel">
     <section class="card card-sim" aria-labelledby="h-sim">
       <h2 id="h-sim" class="card-title">Simulación</h2>
-      <label class="field" for="sim-start">Inicio del derrame</label>
-      <input type="datetime-local" id="sim-start" class="input" step="3600" disabled>
+      <!-- Fecha + hora en 24 h: el datetime-local nativo muestra a. m./p. m. según el sistema -->
+      <fieldset class="datetime" id="sim-start-group" disabled>
+        <legend class="field">Inicio del derrame <span class="field-note">24 h</span></legend>
+        <input type="date" id="sim-start" class="input" aria-label="Fecha de inicio">
+        <div class="time">
+          <select id="sim-hour" class="input" aria-label="Hora (00 a 23)"></select>
+          <span class="time-sep" aria-hidden="true">:</span>
+          <select id="sim-min" class="input" aria-label="Minutos"></select>
+          <span class="time-unit" aria-hidden="true">h</span>
+        </div>
+      </fieldset>
       <button id="btn-sim-mode" class="btn btn-primary">
         <span class="spinner" aria-hidden="true"></span>
         <svg class="btn-ico" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="8" cy="8" r="1.6"/><path d="M8 0v3M8 13v3M0 8h3M13 8h3" stroke="currentColor" stroke-width="1.6"/></svg>

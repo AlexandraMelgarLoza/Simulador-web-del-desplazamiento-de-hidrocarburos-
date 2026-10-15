@@ -569,20 +569,42 @@ function setSimBusy(on) {
 }
 
 // --- Hora de inicio, limitada a la ventana del pronóstico ---
+// Fecha (input date) + hora y minutos en selectores de 24 h
 const simStart = document.getElementById('sim-start');
+const simHour = document.getElementById('sim-hour');
+const simMin = document.getElementById('sim-min');
+const simStartGroup = document.getElementById('sim-start-group');
+const pad2 = (n) => String(n).padStart(2, '0');
+
+for (let h = 0; h < 24; h++) simHour.add(new Option(pad2(h), pad2(h)));
+[0, 15, 30, 45].forEach(m => simMin.add(new Option(pad2(m), pad2(m))));
+
+// "2026-10-01T00:00" a partir de los tres campos; vacío si no hay fecha
+function startFieldValue() {
+  return simStart.value ? `${simStart.value}T${simHour.value}:${simMin.value}` : '';
+}
+
+function setStartFields(iso) {
+  simStart.value = iso.slice(0, 10);
+  simHour.value = iso.slice(11, 13);
+  simMin.value = pad2(Math.floor(Number(iso.slice(14, 16)) / 15) * 15);
+}
 
 // Devuelve la hora elegida en formato ISO, o null si está fuera de la ventana
 function chosenStartTime() {
   if (!fieldInfo) return undefined;
-  const v = simStart.value || fieldInfo.start_time;
+  const v = startFieldValue() || fieldInfo.start_time;
   if (v < fieldInfo.start_time || v > fieldInfo.end_time) return null;
   return v;
 }
 
-simStart.addEventListener('change', () => {
-  if (chosenStartTime() === null) showNotice(...explainError('ventana'));
+[simStart, simHour, simMin].forEach(el => el.addEventListener('change', () => {
+  const outside = chosenStartTime() === null;
+  simStartGroup.classList.toggle('is-invalid', outside);
+  [simStart, simHour, simMin].forEach(f => f.setAttribute('aria-invalid', outside));
+  if (outside) showNotice(...explainError('ventana'));
   else hideNotice();
-});
+}));
 
 simBtn.addEventListener('click', () => {
   if (simBusy) return;
@@ -666,10 +688,10 @@ requestJSON('/api/field-info')
       return;
     }
     fieldInfo = info;
-    simStart.min = info.start_time;
-    simStart.max = info.end_time;
-    simStart.value = info.start_time;
-    simStart.disabled = false;
+    simStart.min = info.start_time.slice(0, 10);
+    simStart.max = info.end_time.slice(0, 10);
+    setStartFields(info.start_time);
+    simStartGroup.disabled = false;
     const b = info.bounds;
     domainRect = L.rectangle([[b.lat_min, b.lon_min], [b.lat_max, b.lon_max]], {
       color: token('--domain'), weight: 1, opacity: 0.6, dashArray: '4 6', fill: false, interactive: false

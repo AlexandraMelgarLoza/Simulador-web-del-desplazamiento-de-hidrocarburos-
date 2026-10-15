@@ -290,6 +290,27 @@ h1, h2 { margin: 0; line-height: var(--lh-tight); }
   color-scheme: dark;
 }
 .input:invalid { border-color: var(--danger); }
+select.input { cursor: pointer; }
+.input:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Inicio del derrame: fecha arriba, hora : minutos en 24 h debajo */
+.datetime { margin: 0 0 var(--sp-3); padding: 0; border: 0; min-width: 0; }
+.datetime legend { padding: 0; }
+.field-note {
+  margin-left: var(--sp-1);
+  padding: 0 var(--sp-1);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  font-family: var(--font-data);
+  font-size: 0.6875rem;
+  font-weight: 400;
+}
+.datetime .input { margin-bottom: 0; }
+.time { display: flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-2); }
+.time .input { width: auto; flex: 1; text-align: center; }
+.time-sep { font-family: var(--font-data); color: var(--text-2); }
+.time-unit { font-size: var(--fs-label); color: var(--text-2); }
+.datetime.is-invalid .input { border-color: var(--danger); }
 .hint { font-size: var(--fs-label); color: var(--text-2); margin: var(--sp-2) 0 0; }
 
 #timeline { display: block; width: 100%; margin: 0; accent-color: var(--accent); }
