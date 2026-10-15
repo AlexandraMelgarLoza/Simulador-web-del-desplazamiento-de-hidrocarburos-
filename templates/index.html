@@ -21,15 +21,22 @@
 
 <header class="topbar">
   <div class="brand">
-    <span class="brand-mark"></span>
-    <div>
+    <!-- Logotipo: gota de hidrocarburo con su estela sobre el oleaje -->
+    <svg class="brand-logo" viewBox="0 0 32 32" aria-hidden="true">
+      <rect class="logo-bg" width="32" height="32" rx="8"/>
+      <path class="logo-wave" d="M5 23.5c2.2-1.6 4.3-1.6 6.5 0s4.3 1.6 6.5 0 4.3-1.6 6.5 0" />
+      <path class="logo-trail" d="M9.5 18.5c1.5-.8 2.6-2 3.2-3.6" />
+      <path class="logo-drop" d="M19 6.5s-5 5.6-5 9.3a5 5 0 0 0 10 0c0-3.7-5-9.3-5-9.3z"/>
+    </svg>
+    <div class="brand-text">
       <h1>Trayectoria de hidrocarburos</h1>
-      <p class="subtitle">Sonda de Campeche · pronóstico Lagrangiano</p>
+      <p class="subtitle">Sonda de Campeche <span aria-hidden="true">·</span> pronóstico Lagrangiano</p>
     </div>
   </div>
   <label class="upload-btn">
-    Subir trayectoria (TXT)
-    <input type="file" id="file-input" accept=".txt,.csv" hidden>
+    <svg class="btn-ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 11V3m0 0L5 6m3-3l3 3M3 10v3h10v-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span class="label-long">Subir trayectoria (TXT)</span><span class="label-short">Subir TXT</span>
+    <input type="file" id="file-input" class="visually-hidden" accept=".txt,.csv">
   </label>
 </header>
 
