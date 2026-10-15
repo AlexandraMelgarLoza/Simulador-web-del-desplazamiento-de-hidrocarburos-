@@ -11,7 +11,9 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(map);
 
 let points = [];
-let trackLine = null;
+let trackLayer = null;   // halo, contorno, segmentos e inicio/fin
+let trackSegments = [];  // un tramo por paso, coloreado según el tiempo
+let pointStyles = [];    // color de cada punto, para atenuar los que aún no ocurren
 let spillMarker = null;
 let playTimer = null;
 let currentIndex = 0;
@@ -32,19 +34,31 @@ const fileInput = document.getElementById('file-input');
 const rootStyle = getComputedStyle(document.documentElement);
 const token = (name) => rootStyle.getPropertyValue(name).trim();
 
-const spillIcon = L.divIcon({
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+// Marcador de la posición actual: punto con un pulso suave (se apaga con reduced-motion)
+const markerIcon = (stranded) => L.divIcon({
   className: 'spill-marker',
-  html: '<div class="spill-dot"></div>',
-  iconSize: [16, 16],
-  iconAnchor: [8, 8]
+  html: `<div class="spill-dot${stranded ? ' stranded' : ''}"></div>`,
+  iconSize: [18, 18],
+  iconAnchor: [9, 9]
+});
+const spillIcon = markerIcon(false);
+const strandedIcon = markerIcon(true);
+
+const endpointIcon = (cls, title) => L.divIcon({
+  className: `track-endpoint ${cls}`,
+  html: `<span title="${title}"></span>`,
+  iconSize: [14, 14],
+  iconAnchor: [7, 7]
 });
 
-const strandedIcon = L.divIcon({
-  className: 'spill-marker',
-  html: '<div class="spill-dot stranded"></div>',
-  iconSize: [16, 16],
-  iconAnchor: [8, 8]
-});
+// Mezcla dos colores #RRGGBB; t = 0 → a, t = 1 → b
+function mixColor(a, b, t) {
+  const ca = a.match(/\w\w/g).map(h => parseInt(h, 16));
+  const cb = b.match(/\w\w/g).map(h => parseInt(h, 16));
+  return '#' + ca.map((v, i) => Math.round(v + (cb[i] - v) * t).toString(16).padStart(2, '0')).join('');
+}
 
 function fmtDate(iso) {
   return new Date(iso).toLocaleString('es-MX', {
@@ -65,24 +79,42 @@ function renderTrajectory(data) {
   points = data.points;
 
   map.closePopup();
-  if (trackLine) map.removeLayer(trackLine);
+  if (trackLayer) map.removeLayer(trackLayer);
   if (spillMarker) map.removeLayer(spillMarker);
   if (pointsLayer) map.removeLayer(pointsLayer);
 
   const latlngs = points.map(p => [p.lat, p.lon]);
-  trackLine = L.polyline(latlngs, { color: token('--track-old'), weight: 3, opacity: 0.9, interactive: false }).addTo(map);
+  const old = token('--track-old');
+  const sea = token('--sea');
+  const stranded = token('--stranded');
+  const last = points.length - 1;
+  // Color de cada paso: del ámbar apagado (inicio) al ámbar vivo (final); rojo si ya varó
+  const colorAt = (i) => (stateOf(points[i]) === 'varado' ? stranded : mixColor(old, sea, last ? i / last : 1));
+
+  const halo = L.polyline(latlngs, { color: sea, weight: 12, opacity: 0.1, interactive: false, lineCap: 'round', lineJoin: 'round' });
+  const casing = L.polyline(latlngs, { color: token('--bg'), weight: 6, opacity: 0.7, interactive: false, lineCap: 'round', lineJoin: 'round' });
+  trackSegments = latlngs.slice(1).map((ll, i) =>
+    L.polyline([latlngs[i], ll], { color: colorAt(i + 1), weight: 3, interactive: false, lineCap: 'round' }));
+  const start = L.marker(latlngs[0], { icon: endpointIcon('is-start', 'Inicio'), interactive: false, keyboard: false });
+  const end = L.marker(latlngs[last], {
+    icon: endpointIcon(stateOf(points[last]) === 'varado' ? 'is-end is-stranded' : 'is-end', 'Fin'),
+    interactive: false, keyboard: false
+  });
+  trackLayer = L.layerGroup([halo, casing, ...trackSegments, start, end]).addTo(map);
+
   // maxZoom: con trayectorias cortas se conserva la costa a la vista como referencia
-  map.fitBounds(trackLine.getBounds(), { padding: [30, 30], maxZoom: 9 });
+  map.fitBounds(halo.getBounds(), { padding: [40, 40], maxZoom: 9, animate: !reducedMotion.matches });
 
   // Un punto por paso de tiempo; al tocarlo muestra sus datos
-  pointsLayer = L.layerGroup(points.map(p =>
+  pointStyles = points.map((p, i) => colorAt(i));
+  pointsLayer = L.layerGroup(points.map((p, i) =>
     L.circleMarker([p.lat, p.lon], {
-      renderer: pointsRenderer, radius: 3, weight: 1,
-      color: token('--bg'), fillColor: token('--sea'), fillOpacity: 0.9
+      renderer: pointsRenderer, radius: 2.5, weight: 1,
+      color: token('--bg'), fillColor: pointStyles[i], fillOpacity: 1
     }).on('click', (e) => (simMode ? simulateAt(e) : openPointPopup(nearestIndex(e))))
   )).addTo(map);
 
-  spillMarker = L.marker(latlngs[0], { icon: spillIcon, keyboard: true, title: 'Posición actual' })
+  spillMarker = L.marker(latlngs[0], { icon: spillIcon, keyboard: true, title: 'Posición actual', zIndexOffset: 1000 })
     .on('click', (e) => (simMode ? simulateAt(e) : openPointPopup(currentIndex)))
     .addTo(map);
 
@@ -140,7 +172,9 @@ const legend = L.control({ position: 'bottomright' });
 legend.onAdd = () => {
   const div = L.DomUtil.create('div', 'legend');
   div.innerHTML =
-    '<div class="legend-row"><span class="dot dot-sea"></span>En el mar</div>' +
+    '<div class="legend-row"><span class="swatch-track"></span>Trayectoria (inicio → fin)</div>' +
+    '<div class="legend-row"><span class="swatch-start"></span>Inicio · <span class="swatch-end"></span>Fin</div>' +
+    '<div class="legend-row"><span class="dot dot-sea"></span>Posición en el mar</div>' +
     '<div class="legend-row"><span class="dot dot-stranded"></span>Varado en costa</div>' +
     '<div class="legend-row"><span class="dash"></span>Área del pronóstico SEMAR</div>';
   return div;
@@ -211,6 +245,11 @@ function setFrame(i) {
   const p = points[currentIndex];
   spillMarker.setLatLng([p.lat, p.lon]);
   spillMarker.setIcon(stateOf(p) === 'varado' ? strandedIcon : spillIcon);
+  // Recorrido hasta ahora a color pleno; el resto, tenue, como trazo pendiente
+  trackSegments.forEach((seg, i) => seg.setStyle({ opacity: i < currentIndex ? 1 : 0.28 }));
+  pointsLayer.getLayers().forEach((pt, i) => pt.setStyle({
+    fillOpacity: i <= currentIndex ? 1 : 0.3, opacity: i <= currentIndex ? 1 : 0.3
+  }));
   timeline.value = currentIndex;
   const h = (new Date(p.t) - new Date(points[0].t)) / 3600000;
   const state = STATE_TEXT[stateOf(p)];
@@ -589,7 +628,7 @@ requestJSON('/api/field-info')
     simStart.disabled = false;
     const b = info.bounds;
     domainRect = L.rectangle([[b.lat_min, b.lon_min], [b.lat_max, b.lon_max]], {
-      color: token('--domain'), weight: 1.5, dashArray: '6 6', fill: false, interactive: false
+      color: token('--domain'), weight: 1, opacity: 0.6, dashArray: '4 6', fill: false, interactive: false
     }).addTo(map);
     el.textContent = `Pronóstico SEMAR\n${fmtShort(info.start_time)} → ${fmtShort(info.end_time)}`;
   })

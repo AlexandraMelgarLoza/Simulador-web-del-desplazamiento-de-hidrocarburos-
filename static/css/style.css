@@ -372,7 +372,7 @@ body.dragging .map-wrap::after {
   flex-shrink: 0;
 }
 .dot-sea { background: var(--sea); }
-.dash { display: inline-block; width: 12px; border-top: 2px dashed var(--domain); flex-shrink: 0; }
+.dash { display: inline-block; width: 12px; border-top: 1px dashed var(--domain); flex-shrink: 0; }
 .dot-stranded { background: var(--stranded); }
 
 .eco { padding-top: 0; padding-bottom: 0; }
@@ -463,15 +463,61 @@ body.dragging .map-wrap::after {
 .pt-popup th { text-align: left; font-size: var(--fs-label); font-weight: 500; color: var(--text-2); padding: 2px var(--sp-3) 2px 0; }
 .pt-popup td { padding: 2px 0; font-family: var(--font-data); }
 
+/* Marcador de la posición actual con pulso suave */
 .spill-dot {
-  width: 16px;
-  height: 16px;
+  position: relative;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   background: var(--sea);
-  border: 2px solid var(--surface);
-  box-shadow: 0 0 0 4px var(--sea-soft);
+  border: 3px solid var(--bg);
+  box-shadow: 0 0 0 1px var(--sea);
 }
-.spill-dot.stranded { background: var(--stranded); box-shadow: 0 0 0 4px var(--stranded-soft); }
+.spill-dot::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid var(--sea);
+  animation: pulse 2s ease-out infinite;
+}
+.spill-dot.stranded { background: var(--stranded); box-shadow: 0 0 0 1px var(--stranded); }
+.spill-dot.stranded::after { border-color: var(--stranded); }
+@keyframes pulse {
+  from { transform: scale(1); opacity: 0.8; }
+  to { transform: scale(2.6); opacity: 0; }
+}
+
+/* Inicio: anillo claro hueco · Fin: rombo del color del estado final */
+.track-endpoint span { display: block; width: 14px; height: 14px; }
+.track-endpoint.is-start span {
+  border-radius: 50%;
+  border: 3px solid var(--text);
+  background: var(--bg);
+}
+.track-endpoint.is-end span {
+  transform: rotate(45deg) scale(0.8);
+  background: var(--sea);
+  border: 2px solid var(--bg);
+}
+.track-endpoint.is-stranded span { background: var(--stranded); }
+
+/* Símbolos de la leyenda */
+.swatch-track {
+  display: inline-block;
+  width: 24px;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--track-old), var(--sea));
+  flex-shrink: 0;
+}
+.swatch-start, .swatch-end { display: inline-block; width: 10px; height: 10px; flex-shrink: 0; }
+.swatch-start { border-radius: 50%; border: 2px solid var(--text); }
+.swatch-end { margin-left: var(--sp-1); transform: rotate(45deg) scale(0.85); background: var(--sea); }
+
+@media (prefers-reduced-motion: reduce) {
+  .spill-dot::after { animation: none; opacity: 0; }
+}
 
 /* --- Modo compacto (?embed=1): sin encabezado, para iframe --- */
 .embed .topbar,
