@@ -177,3 +177,12 @@ fetch('/api/sample')
   .then(res => res.json())
   .then(renderTrajectory)
   .catch(() => { statusText.textContent = 'No se pudo cargar el ejemplo.'; });
+
+// Panel del ecosistema: abierto en escritorio, plegado en celular
+const ecoPanel = document.getElementById('eco-panel');
+const wideScreen = window.matchMedia('(min-width: 769px)');
+ecoPanel.open = wideScreen.matches;
+wideScreen.addEventListener('change', (e) => {
+  ecoPanel.open = e.matches;
+  map.invalidateSize();
+});

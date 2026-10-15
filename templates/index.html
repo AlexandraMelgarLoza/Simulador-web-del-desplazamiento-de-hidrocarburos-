@@ -29,13 +29,13 @@
 <main class="layout">
 
   <aside class="panel">
-    <section class="panel-block">
+    <section class="panel-block transport-block">
       <h2>Reproducción</h2>
       <div class="transport">
         <button id="btn-play" class="btn-icon" aria-label="Reproducir">▶</button>
         <button id="btn-pause" class="btn-icon" aria-label="Pausar">❚❚</button>
       </div>
-      <input type="range" id="timeline" min="0" max="0" value="0" step="1">
+      <input type="range" id="timeline" min="0" max="0" value="0" step="1" aria-label="Línea de tiempo">
       <div class="timeline-label" id="timeline-label">Sin datos cargados</div>
     </section>
 
@@ -52,15 +52,15 @@
       <ul id="warnings-list" class="warnings-list"></ul>
     </section>
 
-    <section class="panel-block">
-      <h2>Impacto en el ecosistema</h2>
+    <details class="panel-block eco" id="eco-panel">
+      <summary><h2>Impacto en el ecosistema</h2></summary>
       <ul class="eco-list">
         <li><strong>Aves y mamíferos marinos</strong> — daño al plumaje/pelaje y a su regulación térmica.</li>
         <li><strong>Tortugas y peces</strong> — intoxicación, daño a huevos y larvas.</li>
         <li><strong>Manglares y arrecifes</strong> — hábitats donde el hidrocarburo puede persistir.</li>
         <li><strong>Pesca y turismo</strong> — afectación directa a comunidades costeras.</li>
       </ul>
-    </section>
+    </details>
   </aside>
 
   <section class="map-wrap">
