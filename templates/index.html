@@ -36,8 +36,24 @@
 <main class="layout">
 
   <aside class="panel">
-    <section class="panel-block transport-block">
-      <h2>Reproducción</h2>
+    <section class="card card-sim" aria-labelledby="h-sim">
+      <h2 id="h-sim" class="card-title">Simulación</h2>
+      <label class="field" for="sim-start">Inicio del derrame</label>
+      <input type="datetime-local" id="sim-start" class="input" step="3600" disabled>
+      <button id="btn-sim-mode" class="btn btn-primary">
+        <span class="spinner" aria-hidden="true"></span>
+        <svg class="btn-ico" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="8" cy="8" r="1.6"/><path d="M8 0v3M8 13v3M0 8h3M13 8h3" stroke="currentColor" stroke-width="1.6"/></svg>
+        <span id="sim-label">Simular desde un punto</span>
+      </button>
+      <p class="hint">Después haz clic en el mar. Se simulan hasta 120 h.</p>
+      <p id="field-info" class="meta"></p>
+    </section>
+
+    <section class="card transport-block" aria-labelledby="h-play">
+      <h2 id="h-play" class="card-title">Reproducción</h2>
+      <div class="timeline-date" id="tl-date" aria-live="polite">—</div>
+      <div class="timeline-label" id="timeline-label">Sin datos cargados</div>
+      <input type="range" id="timeline" min="0" max="0" value="0" step="1" aria-label="Línea de tiempo">
       <div class="transport">
         <button id="btn-prev" class="btn-icon" aria-label="Paso atrás" title="Paso atrás">
           <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="2" height="10"/><path d="M14 3v10L5 8z"/></svg>
@@ -55,26 +71,27 @@
           <button class="btn-speed" data-speed="4" aria-pressed="false">4x</button>
         </div>
       </div>
-      <input type="range" id="timeline" min="0" max="0" value="0" step="1" aria-label="Línea de tiempo">
-      <div class="timeline-date" id="tl-date" aria-live="polite">—</div>
-      <div class="timeline-label" id="timeline-label">Sin datos cargados</div>
     </section>
 
-    <section class="panel-block">
-      <h2>Motor Lagrangiano</h2>
-      <label class="field" for="sim-start">Inicio del derrame</label>
-      <input type="datetime-local" id="sim-start" class="input" step="3600" disabled>
-      <button id="btn-sim-mode" class="btn-full"><span class="spinner" aria-hidden="true"></span><span id="sim-label">Simular desde un punto</span></button>
-      <p class="hint">Actívalo y haz clic en el mar para elegir dónde ocurre el derrame. Se simulan hasta 120 h con el pronóstico de SEMAR.</p>
-      <p id="field-info" class="hint"></p>
+    <section class="card" id="summary" aria-labelledby="h-summary" hidden>
+      <h2 id="h-summary" class="card-title">Resumen</h2>
+      <dl class="summary">
+        <dt>Estado final</dt><dd id="sum-state"></dd>
+        <dt id="sum-arrival-label">Llegada a costa</dt><dd id="sum-arrival"></dd>
+        <dt>Puntos</dt><dd id="sum-count"></dd>
+        <dt>Inicio</dt><dd id="sum-start"></dd>
+        <dt>Fin</dt><dd id="sum-end"></dd>
+      </dl>
+      <button id="btn-export" class="btn btn-secondary">Exportar TXT</button>
     </section>
 
-    <section class="panel-block">
-      <h2>Archivo de trayectoria</h2>
+    <section class="card" aria-labelledby="h-file">
+      <h2 id="h-file" class="card-title">Archivo de trayectoria</h2>
       <label class="dropzone" id="dropzone" for="file-input">
+        <svg class="dropzone-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <strong id="drop-label">Arrastra aquí tu TXT</strong>
         <span id="drop-hint">o haz clic para elegirlo</span>
-        <small>Columnas: fecha_hora, latitud, longitud</small>
+        <small class="meta">fecha_hora, latitud, longitud</small>
       </label>
       <details class="file-errors" id="file-errors" hidden>
         <summary>Líneas con error (<span id="file-errors-count">0</span>)</summary>
@@ -82,26 +99,14 @@
       </details>
     </section>
 
-    <section class="panel-block">
-      <h2>Estado</h2>
+    <section class="card" aria-labelledby="h-status">
+      <h2 id="h-status" class="card-title">Estado</h2>
       <p id="status-text" class="status-text">Cargando trayectoria de ejemplo…</p>
       <ul id="warnings-list" class="warnings-list"></ul>
     </section>
 
-    <section class="panel-block" id="summary" hidden>
-      <h2>Resumen</h2>
-      <dl class="summary">
-        <dt>Puntos</dt><dd id="sum-count"></dd>
-        <dt>Estado final</dt><dd id="sum-state"></dd>
-        <dt id="sum-arrival-label">Llegada a costa</dt><dd id="sum-arrival"></dd>
-        <dt>Inicio</dt><dd id="sum-start"></dd>
-        <dt>Fin</dt><dd id="sum-end"></dd>
-      </dl>
-      <button id="btn-export" class="btn-full btn-secondary">Exportar TXT</button>
-    </section>
-
-    <details class="panel-block eco" id="eco-panel">
-      <summary><h2>Impacto en el ecosistema</h2></summary>
+    <details class="card eco" id="eco-panel">
+      <summary><h2 class="card-title">Impacto en el ecosistema</h2></summary>
       <ul class="eco-list">
         <li><strong>Aves y mamíferos marinos</strong> — daño al plumaje/pelaje y a su regulación térmica.</li>
         <li><strong>Tortugas y peces</strong> — intoxicación, daño a huevos y larvas.</li>

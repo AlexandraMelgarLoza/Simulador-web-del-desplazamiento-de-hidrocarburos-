@@ -52,6 +52,14 @@ function fmtDate(iso) {
   });
 }
 
+// "01 oct 00:00": fecha corta para rangos
+function fmtShort(iso) {
+  const d = new Date(iso);
+  const pad = (n) => String(n).padStart(2, '0');
+  const month = d.toLocaleDateString('es-MX', { month: 'short' }).replace('.', '');
+  return `${pad(d.getDate())} ${month} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 function renderTrajectory(data) {
   stop();
   points = data.points;
@@ -464,7 +472,7 @@ let simBusy = false;
 function setSimMode(on) {
   simMode = on;
   simBtn.classList.toggle('active', on);
-  simLabel.textContent = on ? 'Haz clic en el mar (pulsa aquí para cancelar)' : 'Simular desde un punto';
+  simLabel.textContent = on ? 'Haz clic en el mar · Cancelar' : 'Simular desde un punto';
   map.getContainer().style.cursor = on ? 'crosshair' : '';
 }
 
@@ -583,7 +591,7 @@ requestJSON('/api/field-info')
     domainRect = L.rectangle([[b.lat_min, b.lon_min], [b.lat_max, b.lon_max]], {
       color: token('--domain'), weight: 1.5, dashArray: '6 6', fill: false, interactive: false
     }).addTo(map);
-    el.textContent = `Pronóstico SEMAR disponible del ${fmtDate(info.start_time)} al ${fmtDate(info.end_time)} h.`;
+    el.textContent = `Pronóstico SEMAR\n${fmtShort(info.start_time)} → ${fmtShort(info.end_time)}`;
   })
   .catch(() => showNotice(...NETWORK_ERROR));
 
