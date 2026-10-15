@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trayectoria de hidrocarburos — Sonda de Campeche</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark"></span>
+    <div>
+      <h1>Trayectoria de hidrocarburos</h1>
+      <p class="subtitle">Sonda de Campeche · pronóstico Lagrangiano</p>
+    </div>
+  </div>
+  <label class="upload-btn">
+    Subir TXT de SEMAR
+    <input type="file" id="file-input" accept=".txt,.csv" hidden>
+  </label>
+</header>
+
+<main class="layout">
+
+  <aside class="panel">
+    <section class="panel-block">
+      <h2>Reproducción</h2>
+      <div class="transport">
+        <button id="btn-play" class="btn-icon" aria-label="Reproducir">▶</button>
+        <button id="btn-pause" class="btn-icon" aria-label="Pausar">❚❚</button>
+      </div>
+      <input type="range" id="timeline" min="0" max="0" value="0" step="1">
+      <div class="timeline-label" id="timeline-label">Sin datos cargados</div>
+    </section>
+
+    <section class="panel-block">
+      <h2>Motor Lagrangiano</h2>
+      <button id="btn-sim-mode" class="btn-full">Simular desde un punto</button>
+      <p class="hint">Actívalo y haz clic en el mar para elegir dónde ocurre el derrame. Se simulan hasta 120 h con el pronóstico de SEMAR.</p>
+      <p id="field-info" class="hint"></p>
+    </section>
+
+    <section class="panel-block">
+      <h2>Estado</h2>
+      <p id="status-text" class="status-text">Cargando trayectoria de ejemplo…</p>
+      <ul id="warnings-list" class="warnings-list"></ul>
+    </section>
+
+    <section class="panel-block">
+      <h2>Impacto en el ecosistema</h2>
+      <ul class="eco-list">
+        <li><strong>Aves y mamíferos marinos</strong> — daño al plumaje/pelaje y a su regulación térmica.</li>
+        <li><strong>Tortugas y peces</strong> — intoxicación, daño a huevos y larvas.</li>
+        <li><strong>Manglares y arrecifes</strong> — hábitats donde el hidrocarburo puede persistir.</li>
+        <li><strong>Pesca y turismo</strong> — afectación directa a comunidades costeras.</li>
+      </ul>
+    </section>
+  </aside>
+
+  <section class="map-wrap">
+    <div id="map"></div>
+  </section>
+
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

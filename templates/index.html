@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trayectoria de hidrocarburos — Sonda de Campeche</title>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/leaflet/leaflet.css') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark"></span>
+    <div>
+      <h1>Trayectoria de hidrocarburos</h1>
+      <p class="subtitle">Sonda de Campeche · modelo Lagrangiano con datos de SEMAR</p>
+    </div>
+  </div>
+  <p id="source-badge" class="source-badge">Leyendo datos…</p>
+</header>
+
+<main class="layout">
+
+  <!-- Panel izquierdo: datos, derrame y reproducción -->
+  <aside class="panel panel-left" aria-label="Datos y simulación">
+
+    <section class="panel-block">
+      <h2>Datos de SEMAR</h2>
+      <p id="source-line" class="strong-line">—</p>
+      <p id="window-line" class="hint">—</p>
+      <div class="btn-row">
+        <input type="file" id="file-input" class="sr-only" accept=".txt">
+        <label for="file-input" class="btn btn-secondary">Subir archivo</label>
+        <button type="button" id="btn-use-dir" class="btn btn-secondary">Usar directorio</button>
+      </div>
+      <p id="field-notice" class="notice" role="status" hidden></p>
+      <p class="hint">«Usar directorio» lee el archivo más reciente de la carpeta del servidor y detecta solo cuando llega uno nuevo, sin volver a cargarlo.</p>
+    </section>
+
+    <section class="panel-block">
+      <h2>Derrame</h2>
+      <div class="field-row">
+        <label class="field">Latitud (°N)
+          <input type="number" id="in-lat" step="any" value="19.15">
+        </label>
+        <label class="field">Longitud (°)
+          <input type="number" id="in-lon" step="any" value="-92.30">
+        </label>
+      </div>
+      <p class="hint">Haz clic en el mapa, arrastra el marcador o escribe las coordenadas. La longitud negativa es oeste.</p>
+      <label class="field">Inicio del derrame
+        <input type="datetime-local" id="in-start" step="3600">
+      </label>
+      <div class="field-row">
+        <label class="field">Duración (h)
+          <input type="number" id="in-duration" min="1" max="1000" step="1" value="120">
+        </label>
+        <label class="field">Partículas
+          <input type="number" id="in-particles" min="1" max="1000" step="50" value="200">
+        </label>
+      </div>
+      <details class="advanced">
+        <summary>Parámetros del modelo</summary>
+        <div class="field-row">
+          <label class="field">Difusión K (m²/s)
+            <input type="number" id="in-k" min="0" max="1000" step="any" value="10">
+          </label>
+          <label class="field">Arrastre del viento (%)
+            <input type="number" id="in-drag" min="0" max="10" step="any" value="3">
+          </label>
+        </div>
+        <p class="hint">K controla cuánto se dispersa la mancha. El arrastre es la fracción del viento con que se mueve el hidrocarburo.</p>
+      </details>
+      <button type="button" id="btn-simulate" class="btn btn-primary">Simular</button>
+      <p id="status-text" class="status-text" role="status">Cargando…</p>
+      <ul id="warnings-list" class="warnings-list"></ul>
+    </section>
+
+    <section class="panel-block">
+      <h2>Reproducción</h2>
+      <div class="transport">
+        <button type="button" id="btn-play" class="btn-icon" aria-label="Reproducir">▶</button>
+        <button type="button" id="btn-pause" class="btn-icon" aria-label="Pausar">❚❚</button>
+      </div>
+      <input type="range" id="timeline" min="0" max="0" value="0" step="1" aria-label="Hora de la simulación">
+      <div id="timeline-label" class="timeline-label">Sin simulación</div>
+      <div id="frame-stats" class="timeline-label"></div>
+    </section>
+  </aside>
+
+  <section class="map-wrap" aria-label="Mapa">
+    <div id="map"></div>
+  </section>
+
+  <!-- Panel derecho: vista del mapa, recorrido y coordenadas -->
+  <aside class="panel panel-right" aria-label="Vista del mapa">
+
+    <section class="panel-block">
+      <fieldset>
+        <legend>Mapa base</legend>
+        <label class="choice"><input type="radio" name="base" value="normal" checked> Mapa normal</label>
+        <label class="choice"><input type="radio" name="base" value="satelite"> Satélite</label>
+      </fieldset>
+    </section>
+
+    <section class="panel-block">
+      <fieldset>
+        <legend>Recorrido</legend>
+        <label class="choice"><input type="radio" name="modo" value="linea" checked> Línea del recorrido</label>
+        <label class="choice"><input type="radio" name="modo" value="particulas"> Partículas en movimiento</label>
+      </fieldset>
+    </section>
+
+    <section class="panel-block">
+      <h2>Coordenadas</h2>
+      <dl class="coords">
+        <dt>Cursor</dt>
+        <dd id="coord-cursor">—</dd>
+        <dt>Punto de derrame</dt>
+        <dd id="coord-origin">—</dd>
+        <dt>Centro de la mancha</dt>
+        <dd id="coord-center">—</dd>
+      </dl>
+      <label class="field">Formato
+        <select id="coord-format">
+          <option value="dec">Grados decimales</option>
+          <option value="dms">Grados, minutos y segundos</option>
+        </select>
+      </label>
+      <label class="choice"><input type="checkbox" id="chk-grid"> Mostrar cuadrícula de coordenadas</label>
+    </section>
+
+    <section class="panel-block">
+      <h2>Leyenda</h2>
+      <ul class="legend">
+        <li><span class="dot dot-active"></span>Partícula a la deriva</li>
+        <li><span class="dot dot-stranded"></span>Partícula varada en costa</li>
+        <li><span class="dot dot-origin"></span>Punto de derrame</li>
+      </ul>
+    </section>
+
+    <section class="panel-block">
+      <h2>Impacto en el ecosistema</h2>
+      <ul class="eco-list">
+        <li><strong>Aves y mamíferos marinos</strong> — daño al plumaje y al pelaje, y a su regulación térmica.</li>
+        <li><strong>Tortugas y peces</strong> — intoxicación; daño a huevos y larvas.</li>
+        <li><strong>Manglares y arrecifes</strong> — hábitats donde el hidrocarburo puede persistir.</li>
+        <li><strong>Pesca y turismo</strong> — afectación directa a las comunidades costeras.</li>
+      </ul>
+    </section>
+  </aside>
+
+</main>
+
+<script src="{{ url_for('static', filename='vendor/leaflet/leaflet.js') }}"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

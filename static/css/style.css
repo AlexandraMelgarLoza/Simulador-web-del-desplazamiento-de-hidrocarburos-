@@ -1,0 +1,207 @@
+:root {
+  --navy: #0B1E33;
+  --teal: #114B5F;
+  --teal-light: #1B7089;
+  --oil: #15171C;
+  --amber: #E0A458;
+  --foam: #F0F4F4;
+  --line: #24415A;
+  --muted: #9FB3C2;
+  --stranded: #E5604D;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: 'Inter', Arial, sans-serif;
+  font-size: 15px;
+  background: var(--navy);
+  color: var(--foam);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+h1, h2, legend { font-family: 'Space Grotesk', Arial, sans-serif; margin: 0; }
+
+:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- Barra superior ---------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 24px;
+  background: var(--oil);
+  border-bottom: 1px solid var(--line);
+}
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-mark { width: 10px; height: 28px; background: var(--amber); border-radius: 2px; }
+.brand h1 { font-size: 1.15rem; font-weight: 600; }
+.subtitle { margin: 2px 0 0; font-size: 0.82rem; color: var(--muted); }
+.source-badge {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--foam);
+  background: var(--teal);
+  padding: 6px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* ---------- Rejilla principal ---------- */
+.layout {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr) 290px;
+}
+
+.panel {
+  background: var(--oil);
+  padding: 18px 20px;
+  overflow-y: auto;
+}
+.panel-left { border-right: 1px solid var(--line); }
+.panel-right { border-left: 1px solid var(--line); }
+
+.panel-block { margin-bottom: 26px; }
+.panel-block h2,
+.panel-block legend {
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--amber);
+  margin-bottom: 10px;
+  padding: 0;
+}
+fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+
+.hint { font-size: 0.78rem; line-height: 1.4; color: var(--muted); margin: 6px 0 10px; }
+.strong-line { margin: 0; font-size: 0.9rem; font-weight: 600; overflow-wrap: anywhere; }
+
+/* ---------- Botones ---------- */
+.btn, .btn-icon {
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--foam);
+  background: var(--teal);
+}
+.btn { display: inline-block; padding: 9px 14px; text-align: center; }
+.btn:hover, .btn-icon:hover { background: var(--teal-light); }
+.btn-primary { width: 100%; margin-top: 12px; background: var(--amber); color: var(--oil); }
+.btn-primary:hover { background: #EAB46C; }
+.btn-primary:disabled { opacity: 0.6; cursor: progress; }
+.btn-secondary { background: var(--teal); }
+label.btn:focus-within { outline: 2px solid var(--amber); outline-offset: 2px; }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 4px; }
+
+.transport { display: flex; gap: 8px; margin-bottom: 10px; }
+.btn-icon { width: 44px; height: 36px; }
+
+/* ---------- Campos ---------- */
+.field { display: block; font-size: 0.78rem; color: var(--muted); margin-bottom: 10px; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+input[type="number"], input[type="datetime-local"], select {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 7px 8px;
+  font: inherit;
+  font-size: 0.88rem;
+  color: var(--foam);
+  background: var(--navy);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+input[type="range"] { width: 100%; accent-color: var(--amber); }
+
+.advanced { margin: 4px 0 6px; }
+.advanced summary { cursor: pointer; font-size: 0.82rem; color: var(--muted); margin-bottom: 10px; }
+
+.choice { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; margin-bottom: 8px; cursor: pointer; }
+.choice input { accent-color: var(--amber); width: 16px; height: 16px; margin: 0; }
+
+/* ---------- Estado y avisos ---------- */
+.timeline-label { font-size: 0.8rem; color: var(--muted); margin-top: 6px; min-height: 1.1em; }
+.status-text { font-size: 0.88rem; line-height: 1.45; margin: 12px 0 0; }
+.warnings-list { list-style: none; padding: 0; margin: 8px 0 0; font-size: 0.78rem; color: var(--amber); }
+.warnings-list li { margin-bottom: 4px; }
+.notice {
+  font-size: 0.8rem;
+  line-height: 1.4;
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--amber);
+  background: rgba(224, 164, 88, 0.1);
+}
+.notice.error { border-left-color: var(--stranded); background: rgba(229, 96, 77, 0.12); }
+
+/* ---------- Coordenadas y leyenda ---------- */
+.coords { margin: 0 0 12px; }
+.coords dt { font-size: 0.75rem; color: var(--muted); margin-top: 8px; }
+.coords dd { margin: 2px 0 0; font-size: 0.88rem; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+
+.legend { list-style: none; padding: 0; margin: 0; font-size: 0.85rem; }
+.legend li { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.dot { width: 12px; height: 12px; border-radius: 50%; border: 1px solid #000; flex: none; }
+.dot-active { background: var(--amber); }
+.dot-stranded { background: var(--stranded); }
+.dot-origin { background: var(--teal); border: 2px solid #fff; }
+
+.eco-list { list-style: none; padding: 0; margin: 0; font-size: 0.82rem; line-height: 1.5; color: #C7D4DB; }
+.eco-list li { margin-bottom: 10px; padding-left: 12px; border-left: 2px solid var(--teal); }
+.eco-list strong { color: var(--foam); }
+
+/* ---------- Mapa ---------- */
+.map-wrap { position: relative; min-height: 0; }
+#map { position: absolute; inset: 0; background: var(--navy); }
+
+.origin-marker span {
+  display: block;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--teal);
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.5);
+}
+.grid-label {
+  color: #fff;
+  font: 600 11px 'Inter', Arial, sans-serif;
+  white-space: nowrap;
+  text-shadow: 0 0 3px #000, 0 0 3px #000, 0 0 5px #000;
+  pointer-events: none;
+}
+
+/* ---------- Pantallas angostas ---------- */
+@media (max-width: 1100px) {
+  body { height: auto; overflow: auto; display: block; }
+  .layout { display: flex; flex-direction: column; }
+  .map-wrap { order: -1; height: 62vh; min-height: 360px; }
+  .panel { overflow: visible; }
+  .panel-left, .panel-right { border: 0; border-top: 1px solid var(--line); }
+  .topbar { flex-wrap: wrap; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { scroll-behavior: auto !important; transition: none !important; }
+}
