@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trayectoria de hidrocarburos — Sonda de Campeche</title>
+
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=4">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css?v=4">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true">
+      <rect width="40" height="40" rx="11" fill="#0A6B74"/>
+      <path d="M6 15c4-4 7-4 10 0s6 4 9 0 6-4 9 0" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/>
+      <path d="M6 22c4-4 7-4 10 0s6 4 9 0 6-4 9 0" fill="none" stroke="#9FDCE1" stroke-width="2.6" stroke-linecap="round"/>
+      <path d="M6 29c4-4 7-4 10 0s6 4 9 0 6-4 9 0" fill="none" stroke="#F2C66D" stroke-width="2.6" stroke-linecap="round"/>
+    </svg>
+    <div>
+      <h1>Trayectoria de hidrocarburos</h1>
+      <p class="subtitle">Sonda de Campeche · modelo Lagrangiano con datos de SEMAR</p>
+    </div>
+  </div>
+  <p id="source-badge" class="source-badge">Leyendo datos…</p>
+</header>
+
+<main class="layout">
+
+  <!-- Panel izquierdo: datos, derrame y estado de la mancha -->
+  <aside class="panel panel-left" aria-label="Datos y simulación">
+
+    <section class="panel-block">
+      <h2>Datos de SEMAR</h2>
+      <p id="source-line" class="strong-line">—</p>
+      <p id="window-line" class="hint">—</p>
+      <button type="button" id="btn-reload" class="btn btn-block">Recargar datos</button>
+      <p id="field-notice" class="notice" role="status" hidden></p>
+      <ul id="warnings-list" class="warnings-list"></ul>
+    </section>
+
+    <section class="panel-block">
+      <h2>Derrame</h2>
+      <div class="field-row">
+        <label class="field">Latitud (°N)
+          <input type="number" id="in-lat" step="any" value="20.50">
+        </label>
+        <label class="field">Longitud (°)
+          <input type="number" id="in-lon" step="any" value="-94.00">
+        </label>
+      </div>
+      <p class="hint">Haz clic en el mapa, arrastra el marcador o escribe las coordenadas. La longitud negativa es oeste.</p>
+      <label class="field">Inicio del derrame
+        <input type="datetime-local" id="in-start" step="3600">
+      </label>
+      <div class="field-row">
+        <label class="field">Duración (h)
+          <input type="number" id="in-duration" min="1" max="1000" step="1" value="120">
+        </label>
+        <label class="field">Partículas
+          <input type="number" id="in-particles" min="1" max="1000" step="50" value="300">
+        </label>
+      </div>
+      <details class="advanced">
+        <summary>Parámetros del modelo</summary>
+        <div class="field-row">
+          <label class="field">Difusión K (m²/s)
+            <input type="number" id="in-k" min="0" max="1000" step="any" value="10">
+          </label>
+          <label class="field">Arrastre del viento (%)
+            <input type="number" id="in-drag" min="0" max="10" step="any" value="3">
+          </label>
+        </div>
+        <label class="field">Semilla (opcional, para repetir una simulación)
+          <input type="number" id="in-seed" step="1" placeholder="aleatoria">
+        </label>
+        <p class="hint">K controla cuánto se dispersa la mancha. El arrastre es la fracción del viento con que se mueve el hidrocarburo.</p>
+      </details>
+      <div class="btn-row">
+        <button type="button" id="btn-simulate" class="btn btn-primary">Simular</button>
+        <button type="button" id="btn-clear" class="btn">Borrar</button>
+      </div>
+      <p id="status-text" class="status-text" role="status">Cargando…</p>
+    </section>
+
+    <section class="panel-block">
+      <h2>Estado de la mancha</h2>
+      <dl class="stat-list">
+        <dt>Hora</dt><dd id="st-hour">—</dd>
+        <dt>A la deriva</dt><dd id="st-active">—</dd>
+        <dt>Varadas en costa</dt><dd id="st-stranded">—</dd>
+        <dt>Fuera del dominio</dt><dd id="st-lost">—</dd>
+        <dt>Centro</dt><dd id="st-center">—</dd>
+        <dt>Distancia al origen</dt><dd id="st-dist">—</dd>
+      </dl>
+    </section>
+  </aside>
+
+  <!-- Mapa: Leaflet (calles / satélite) + capa de p5.js encima -->
+  <section class="map-wrap" aria-label="Mapa">
+    <div id="map"></div>
+
+    <div class="timebar" role="group" aria-label="Control del tiempo">
+      <button type="button" id="btn-play" class="btn-icon btn-play" aria-label="Reproducir">▶</button>
+      <input type="range" id="timeline" min="0" max="0" value="0" step="1" aria-label="Hora de la simulación">
+      <div class="timebar-label">
+        <span id="tl-main">—</span>
+        <small id="tl-sub"></small>
+      </div>
+      <label class="sr-only" for="speed">Velocidad</label>
+      <select id="speed" title="Velocidad de reproducción">
+        <option value="1">1 h/s</option>
+        <option value="2" selected>2 h/s</option>
+        <option value="4">4 h/s</option>
+        <option value="8">8 h/s</option>
+      </select>
+    </div>
+  </section>
+
+  <!-- Panel derecho: vista del mapa -->
+  <aside class="panel panel-right" aria-label="Vista del mapa">
+
+    <section class="panel-block">
+      <fieldset>
+        <legend>Mapa base</legend>
+        <label class="choice"><input type="radio" name="base" value="normal" checked> Mapa normal</label>
+        <label class="choice"><input type="radio" name="base" value="satelite"> Satélite</label>
+      </fieldset>
+    </section>
+
+    <section class="panel-block">
+      <fieldset>
+        <legend>Capas</legend>
+        <label class="choice"><input type="checkbox" id="chk-heat" checked> Altura del oleaje (color)</label>
+        <label class="choice"><input type="checkbox" id="chk-arrows" checked> Viento (flechas)</label>
+        <label class="choice"><input type="checkbox" id="chk-flow" checked> Viento en movimiento</label>
+        <label class="choice"><input type="checkbox" id="chk-grid" checked> Cuadrícula de coordenadas</label>
+        <label class="choice"><input type="checkbox" id="chk-coast"> Línea de costa del modelo</label>
+      </fieldset>
+    </section>
+
+    <section class="panel-block">
+      <h2>Bajo el cursor</h2>
+      <dl class="coords">
+        <dt>Coordenadas</dt>
+        <dd id="coord-cursor">—</dd>
+        <dt>Altura del oleaje</dt>
+        <dd id="val-hs">—</dd>
+        <dt>Viento</dt>
+        <dd id="val-wind">—</dd>
+      </dl>
+      <label class="field">Formato de coordenadas
+        <select id="coord-format">
+          <option value="dec">Grados decimales</option>
+          <option value="dms">Grados, minutos y segundos</option>
+        </select>
+      </label>
+    </section>
+
+    <section class="panel-block">
+      <h2>Leyenda</h2>
+      <div id="legend-bar" class="legend-bar" aria-hidden="true"></div>
+      <div class="legend-scale"><span>0 m</span><span>1</span><span>2</span><span>3 m</span></div>
+      <ul class="legend">
+        <li><span class="dot dot-oil"></span>Hidrocarburo a la deriva</li>
+        <li><span class="dot dot-stranded"></span>Varado en costa</li>
+        <li><span class="dot dot-origin"></span>Punto de derrame</li>
+        <li><span class="dash"></span>Recorrido del centro</li>
+      </ul>
+      <p class="hint">Color: altura del oleaje de viento. Flechas y líneas en movimiento: hacia dónde sopla el viento estimado.</p>
+    </section>
+
+    <section class="panel-block">
+      <h2>Impacto en el ecosistema</h2>
+      <ul class="eco-list">
+        <li><strong>Aves y mamíferos marinos</strong> — daño al plumaje y al pelaje, y a su regulación térmica.</li>
+        <li><strong>Tortugas y peces</strong> — intoxicación; daño a huevos y larvas.</li>
+        <li><strong>Manglares y arrecifes</strong> — hábitats donde el hidrocarburo puede persistir.</li>
+        <li><strong>Pesca y turismo</strong> — afectación directa a las comunidades costeras.</li>
+      </ul>
+    </section>
+  </aside>
+
+</main>
+
+<script src="vendor/leaflet/leaflet.js?v=4"></script>
+<script src="vendor/p5/p5.min.js?v=4"></script>
+<script src="js/wavefield.js?v=4"></script>
+<script src="js/coast.js?v=4"></script>
+<script src="js/motor.js?v=4"></script>
+<script src="js/sketch.js?v=4"></script>
+<script src="js/ui.js?v=4"></script>
+</body>
+</html>
