@@ -1,16 +1,17 @@
 'use strict';
 /*
- * Motor de pronóstico de trayectoria y dispersión de hidrocarburos (modelo Lagrangiano
- * de partículas). Port de utils/motor.py.
+ * Motor browniano de dispersión de hidrocarburos con deriva por viento.
+ * Port de utils/motor.py; integra la deriva y la difusión con Euler-Maruyama.
  *
  * En cada paso dt:   posición(t + dt) = posición(t) + DERIVA * dt + DIFUSIÓN
  *
- * 1) DERIVA POR VIENTO: el hidrocarburo se mueve en la dirección del viento con una fracción
- *    de su velocidad (arrastre, 3 %):   v = DRAG_COEF * U
- *    El viento se estima del oleaje de viento del archivo de SEMAR (ver wavefield.js).
+ * 1) DERIVA POR VIENTO: el hidrocarburo se mueve en sentido opuesto a la dirección "de donde
+ *    viene" indicada por SEMAR, con una fracción de la velocidad (arrastre, 3 %):
+ *    v = DRAG_COEF * U. La velocidad se estima de la altura de ola (ver wavefield.js).
  * 2) DIFUSIÓN BROWNIANA: paso aleatorio normal por eje, sigma = sqrt(2 K dt)
  *    (relación de Einstein Var(x) = 2 K t). K = 10 m²/s por defecto (valor de NOAA GNOME).
- * 3) VARAMIENTO: una partícula que entra a una celda sin dato (tierra) se detiene y queda
+ * 3) No se modela la corriente marina.
+ * 4) VARAMIENTO: una partícula que entra a una celda sin dato (tierra) se detiene y queda
  *    "varada". Si sale del dominio del archivo, también se detiene.
  *
  * Integración de Euler explícita. Metros a grados: dlat = dy / 111320,

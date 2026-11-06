@@ -26,7 +26,7 @@ Reemplaza `data/dirmarea.txt` por el archivo nuevo y recarga la página (Cmd+R).
 - `css/style.css`     estilos (tema marino claro)
 - `js/wavefield.js`   lector del TXT (port de semar_reader.py)
 - `js/coast.js`       costa fina: decide qué es tierra y qué es agua (prueba punto-en-polígono)
-- `js/motor.js`       motor Lagrangiano (port de motor.py): deriva por viento + difusión + varamiento
+- `js/motor.js`       motor browniano (port de motor.py): deriva por ola/viento + difusión + varamiento
 - `js/sketch.js`      mapa y dibujo con p5.js (oleaje, cuadrícula, flujo de viento, flechas, mancha)
 - `js/ui.js`          controles, simulación, reproducción y lecturas
 - `vendor/`           Leaflet y p5.js incluidos (los mosaicos del mapa sí requieren internet)
@@ -45,6 +45,9 @@ La rejilla de SEMAR (0.16° ≈ 18 km) marca como "tierra" toda celda sin dato, 
 - Si `coast.json` no carga, la página avisa y vuelve al comportamiento anterior (solo rejilla).
 
 ## Notas del modelo
-Igual que el original: viento estimado del oleaje (U = sqrt(Hs/0.0246)), arrastre 3 %, K = 10 m²/s.
-Verificado contra el motor de Python: con K = 0 las trayectorias coinciden hasta ~1e-8°.
-El coeficiente 0.0246 está por confirmar (ver comentarios en wavefield.js).
+El motor browniano integra la deriva por ola/viento y la difusión aleatoria, con varamiento costero.
+Usa las columnas `dirolavto` (dirección de donde viene la ola/viento) y `alturaolavto`
+para estimar el viento (`U = sqrt(Hs/0.0246)`); la deriva va en sentido opuesto a `dirolavto`,
+con arrastre de 3 % y difusión K = 10 m²/s.
+No se modela la corriente marina. Verificado contra el motor de Python: con K = 0 las trayectorias
+coinciden hasta ~1e-8°. El coeficiente 0.0246 está por confirmar (ver comentarios en wavefield.js).

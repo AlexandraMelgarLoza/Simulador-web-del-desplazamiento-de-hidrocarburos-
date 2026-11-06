@@ -13,7 +13,7 @@
  */
 (function (root) {
   const FILL_THRESHOLD = -1e8;
-  const WAVE_DIR_CONVENTION = 'from';   // 'from' (de dónde viene, como el viento) o 'to'
+  const WAVE_DIR_CONVENTION = 'from';   // Dirección de donde viene, como el viento
   const PM_COEF = 0.0246;               // Hs = PM_COEF * U^2 (por confirmar, ver README)
   const REQUIRED = ['lon', 'lat', 'dirolavto', 'alturaolavto'];
   const MONTHS = { JAN: 1, ENE: 1, FEB: 2, MAR: 3, APR: 4, ABR: 4, MAY: 5, JUN: 6, JUL: 7,

@@ -22,7 +22,7 @@
     </svg>
     <div>
       <h1>Trayectoria de hidrocarburos</h1>
-      <p class="subtitle">Sonda de Campeche · modelo Lagrangiano con datos de SEMAR</p>
+      <p class="subtitle">Sonda de Campeche </p>
     </div>
   </div>
   <p id="source-badge" class="source-badge">Leyendo datos…</p>
@@ -65,7 +65,7 @@
         </label>
       </div>
       <details class="advanced">
-        <summary>Parámetros del modelo</summary>
+        <summary>Parámetros del modelo browniano</summary>
         <div class="field-row">
           <label class="field">Difusión K (m²/s)
             <input type="number" id="in-k" min="0" max="1000" step="any" value="10">
@@ -77,7 +77,7 @@
         <label class="field">Semilla (opcional, para repetir una simulación)
           <input type="number" id="in-seed" step="1" placeholder="aleatoria">
         </label>
-        <p class="hint">K controla cuánto se dispersa la mancha. El arrastre es la fracción del viento con que se mueve el hidrocarburo.</p>
+        <p class="hint">K controla la difusión browniana. La deriva sigue el viento inferido de las olas de SEMAR; no se modela la corriente marina.</p>
       </details>
       <div class="btn-row">
         <button type="button" id="btn-simulate" class="btn btn-primary">Simular</button>
@@ -188,9 +188,9 @@
 
 <script src="vendor/leaflet/leaflet.js?v=4"></script>
 <script src="vendor/p5/p5.min.js?v=4"></script>
-<script src="js/wavefield.js?v=4"></script>
+<script src="js/wavefield.js?v=5"></script>
 <script src="js/coast.js?v=4"></script>
-<script src="js/motor.js?v=4"></script>
+<script src="js/motor.js?v=5"></script>
 <script src="js/sketch.js?v=4"></script>
 <script src="js/ui.js?v=4"></script>
 </body>
