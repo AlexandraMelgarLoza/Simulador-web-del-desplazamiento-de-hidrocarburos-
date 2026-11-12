@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=4">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=4">
+<link rel="stylesheet" href="css/style.css?v=6">
 </head>
 <body>
 
@@ -134,6 +134,8 @@
     <section class="panel-block">
       <fieldset>
         <legend>Capas</legend>
+        <label class="choice"><input type="checkbox" id="chk-slick" checked> Mancha (densidad)</label>
+        <label class="choice"><input type="checkbox" id="chk-particles" checked> Partículas y estelas</label>
         <label class="choice"><input type="checkbox" id="chk-heat" checked> Altura del oleaje (color)</label>
         <label class="choice"><input type="checkbox" id="chk-arrows" checked> Dirección del oleaje (flechas)</label>
         <label class="choice"><input type="checkbox" id="chk-flow" checked> Oleaje en movimiento</label>
@@ -167,7 +169,8 @@
       <div id="legend-bar" class="legend-bar" aria-hidden="true"></div>
       <div class="legend-scale"><span>0 m</span><span>1</span><span>2</span><span>3 m</span></div>
       <ul class="legend">
-        <li><span class="dot dot-oil"></span>Hidrocarburo a la deriva</li>
+        <li><span class="swatch-slick"></span>Mancha (densidad de partículas)</li>
+        <li><span class="dot dot-oil"></span>Partícula a la deriva (con estela de 4 h)</li>
         <li><span class="dot dot-stranded"></span>Varado en costa</li>
         <li><span class="dot dot-origin"></span>Punto de derrame</li>
         <li><span class="dash"></span>Recorrido del centro</li>
@@ -193,7 +196,7 @@
 <script src="js/wavefield.js?v=6"></script>
 <script src="js/coast.js?v=4"></script>
 <script src="js/motor.js?v=6"></script>
-<script src="js/sketch.js?v=6"></script>
-<script src="js/ui.js?v=6"></script>
+<script src="js/sketch.js?v=7"></script>
+<script src="js/ui.js?v=7"></script>
 </body>
 </html>

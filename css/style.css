@@ -130,7 +130,8 @@ input[type="range"] { width: 100%; accent-color: var(--teal-dark); }
 .legend { list-style: none; padding: 0; margin: 0; font-size: 0.84rem; }
 .legend li { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
 .dot { width: 13px; height: 13px; border-radius: 50%; flex: none; }
-.dot-oil { background: radial-gradient(circle, var(--oil) 35%, rgba(43,30,21,0.35) 100%); border: 1.5px solid rgba(242,163,58,0.9); }
+.dot-oil { width: 9px; height: 9px; margin: 0 2px; background: #FF9F1C; border: 1px solid rgba(30,18,8,0.9); }
+.swatch-slick { width: 13px; height: 13px; flex: none; border-radius: 4px; background: rgba(43,30,21,0.22); border: 2px solid #C2600A; }
 .dot-stranded { background: var(--coral); border: 2px solid #fff; box-shadow: 0 0 0 1px var(--coral); }
 .dot-origin { background: var(--teal-dark); border: 2px solid #fff; box-shadow: 0 0 0 1.5px var(--teal-dark); }
 .dash { width: 16px; height: 0; border-top: 2px dashed var(--teal-dark); flex: none; }

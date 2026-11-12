@@ -296,6 +296,8 @@ $('chk-heat').addEventListener('change', (e) => { S2.showHeat = e.target.checked
 $('chk-arrows').addEventListener('change', (e) => { S2.showArrows = e.target.checked; App.redraw(); });
 $('chk-coast').addEventListener('change', (e) => { S2.showCoast = e.target.checked; App.redraw(); });
 $('chk-grid').addEventListener('change', (e) => { S2.showGrid = e.target.checked; App.redraw(); });
+$('chk-slick').addEventListener('change', (e) => { S2.showSlick = e.target.checked; App.redraw(); });
+$('chk-particles').addEventListener('change', (e) => { S2.showParticles = e.target.checked; App.redraw(); });
 $('chk-flow').addEventListener('change', (e) => { S2.showFlow = e.target.checked; App.refreshLoop(); });
 $('in-wave-factor').addEventListener('input', () => updateHover(lastLatLng));
 $('coord-format').addEventListener('change', (e) => {

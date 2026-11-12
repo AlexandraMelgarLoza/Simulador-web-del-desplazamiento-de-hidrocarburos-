@@ -19,6 +19,7 @@ const App = {
     h: 0,                       // horas desde el inicio del pronóstico (fraccionario)
     base: 'normal',
     showHeat: true, showArrows: true, showFlow: true, showGrid: true, showCoast: false,
+    showSlick: true, showParticles: true,
     coast: null,                // contorno fino de costa (CoastData.Coast)
     fmt: 'dec',
     hover: null,                // {i, j}
@@ -56,8 +57,10 @@ App.setBase = (name) => {
 
 /* Colores de las capas según el mapa de fondo (legibles en claro y en satélite) */
 const THEME = {
-  normal:   { flow: '14,58,70',   grid: '14,58,70',   gridText: '#0E3A46', halo: 'rgba(255,255,255,0.92)', arrowCore: '#0E3A46', arrowCase: 'rgba(255,255,255,0.85)' },
-  satelite: { flow: '255,255,255', grid: '255,255,255', gridText: '#FFFFFF', halo: 'rgba(0,20,30,0.85)',    arrowCore: '#FFFFFF', arrowCase: 'rgba(5,25,35,0.8)' },
+  normal:   { flow: '14,58,70',   grid: '14,58,70',   gridText: '#0E3A46', halo: 'rgba(255,255,255,0.92)', arrowCore: '#0E3A46', arrowCase: 'rgba(255,255,255,0.85)',
+              dot: '#FF9F1C', dotCase: 'rgba(30,18,8,0.9)', trail: '196,92,0', hull: '#C2600A', hullCase: 'rgba(255,255,255,0.85)' },
+  satelite: { flow: '255,255,255', grid: '255,255,255', gridText: '#FFFFFF', halo: 'rgba(0,20,30,0.85)',    arrowCore: '#FFFFFF', arrowCase: 'rgba(5,25,35,0.8)',
+              dot: '#FFD23F', dotCase: 'rgba(20,12,6,0.9)',  trail: '255,210,63', hull: '#FFB347', hullCase: 'rgba(10,20,25,0.7)' },
 };
 
 /* Marcador del punto de derrame: se puede arrastrar. */
@@ -120,7 +123,8 @@ map.getContainer().appendChild(host);
 
 let looping = true;
 
-/* Sprites (círculos difusos) para dibujar la mancha */
+/* Sprite (círculo difuso) para la capa de densidad de la mancha. Es tenue a propósito: los
+   círculos se acumulan y la capa completa se dibuja con opacidad máxima de ~25 % (SLICK_ALPHA). */
 function makeSprite(rgb, a0, a1) {
   const c = document.createElement('canvas');
   c.width = c.height = 64;
@@ -132,8 +136,7 @@ function makeSprite(rgb, a0, a1) {
   g.fillStyle = grad; g.fillRect(0, 0, 64, 64);
   return c;
 }
-const spriteOil = makeSprite('36,24,16', 0.42, 0.20);
-const spriteGlow = makeSprite('242,163,58', 0.38, 0.14);
+const spriteOil = makeSprite('43,30,21', 0.40, 0.22);
 
 /* Partículas del flujo de oleaje (las líneas en movimiento). Solo es visual: la deriva de Stokes
    es de ~0.1 m/s, así que se exagera para que el movimiento se note en pantalla. */
@@ -362,22 +365,73 @@ new p5((p) => {
     return lo.concat(up);
   }
 
+  /* Posición (lat, lon) de cada partícula en el cuadro fraccionario fr, interpolada entre cuadros. */
+  function positionsAt(sim, fr, outLat, outLon) {
+    const f0 = Math.floor(fr), f1 = Math.min(f0 + 1, sim.steps), a = fr - f0;
+    const la0 = sim.lat[f0], la1 = sim.lat[f1], lo0 = sim.lon[f0], lo1 = sim.lon[f1];
+    for (let q = 0; q < sim.n; q++) {
+      outLat[q] = la0[q] + (la1[q] - la0[q]) * a;
+      outLon[q] = lo0[q] + (lo1[q] - lo0[q]) * a;
+    }
+  }
+
+  /* Capa aparte para la mancha: los círculos se acumulan aquí (más partículas juntas = más densa)
+     y luego se pega sobre el mapa con opacidad SLICK_ALPHA, así la mancha nunca pasa de ~25 %
+     y deja ver las partículas y el mapa. */
+  const SLICK_ALPHA = 0.25;
+  const TRAIL_HOURS = 4;        // largo de la estela de cada partícula (horas de simulación)
+  const TRAIL_SAMPLES = 8;      // segmentos por estela
+  let slickCanvas = null, slickCtx = null;
+  function slickLayer(W, H) {
+    const d = p.pixelDensity(), w = Math.round(W * d), h = Math.round(H * d);
+    if (!slickCanvas) { slickCanvas = document.createElement('canvas'); slickCtx = slickCanvas.getContext('2d'); }
+    if (slickCanvas.width !== w || slickCanvas.height !== h) { slickCanvas.width = w; slickCanvas.height = h; }
+    slickCtx.setTransform(d, 0, 0, d, 0, 0);
+    slickCtx.clearRect(0, 0, W, H);
+    return slickCtx;
+  }
+
   function drawSpill(ctx, proj, W, H) {
     const sim = S.sim;
     if (!sim) return;
     const th = THEME[S.base];
+    const n = sim.n;
     const fr = Math.max(0, Math.min(sim.steps, (S.h - (sim.startMs - S.field.times[0]) / 3.6e6) / sim.dtHours));
     const f0 = Math.floor(fr), f1 = Math.min(f0 + 1, sim.steps), a = fr - f0;
     const stat = sim.status[a < 0.5 ? f0 : f1];
-    const la0 = sim.lat[f0], la1 = sim.lat[f1], lo0 = sim.lon[f0], lo1 = sim.lon[f1];
-    const n = sim.n;
+    const lats = new Float64Array(n), lons = new Float64Array(n);
+    positionsAt(sim, fr, lats, lons);
     const xs = new Float32Array(n), ys = new Float32Array(n);
-    for (let q = 0; q < n; q++) {
-      xs[q] = proj.x(lo0[q] + (lo1[q] - lo0[q]) * a);
-      ys[q] = proj.y(la0[q] + (la1[q] - la0[q]) * a);
+    for (let q = 0; q < n; q++) { xs[q] = proj.x(lons[q]); ys[q] = proj.y(lats[q]); }
+
+    // 1) Mancha (densidad): relleno suave, máximo ~25 % de opacidad, y su contorno bien visible
+    if (S.showSlick) {
+      const sctx = slickLayer(W, H);
+      const r = Math.max(9, Math.min(32, 8000 / proj.mPerPx(sim.origin.lat)));
+      for (let q = 0; q < n; q++) {
+        if (stat[q] === Motor.STATUS_OUT) continue;
+        sctx.drawImage(spriteOil, xs[q] - r, ys[q] - r, r * 2, r * 2);
+      }
+      ctx.save();
+      ctx.globalAlpha = SLICK_ALPHA;
+      ctx.drawImage(slickCanvas, 0, 0, W, H);
+      ctx.restore();
+
+      const pts = [];
+      for (let q = 0; q < n; q++) if (stat[q] !== Motor.STATUS_OUT) pts.push([xs[q], ys[q]]);
+      const hl = hull(pts);
+      if (hl.length >= 3) {
+        ctx.save();
+        ctx.beginPath(); hl.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath();
+        ctx.fillStyle = 'rgba(43,30,21,0.06)'; ctx.fill();
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = 4; ctx.strokeStyle = th.hullCase; ctx.stroke();
+        ctx.lineWidth = 2; ctx.strokeStyle = th.hull; ctx.stroke();
+        ctx.restore();
+      }
     }
 
-    // Recorrido del centro, hasta el instante actual
+    // 2) Recorrido del centro, hasta el instante actual
     ctx.save();
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     const path = new Path2D();
@@ -393,45 +447,51 @@ new p5((p) => {
     ctx.setLineDash([7, 6]); ctx.strokeStyle = '#0A6B74'; ctx.lineWidth = 2.2; ctx.stroke(path);
     ctx.restore();
 
-    // Contorno de la mancha (envolvente de las partículas que siguen en el dominio)
-    const pts = [];
-    for (let q = 0; q < n; q++) if (stat[q] !== Motor.STATUS_OUT) pts.push([xs[q], ys[q]]);
-    const hl = hull(pts);
-    if (hl.length >= 3) {
+    // 3) Partículas y estelas (últimas TRAIL_HOURS horas), encima de la mancha
+    if (S.showParticles) {
+      const frStart = Math.max(0, fr - TRAIL_HOURS / sim.dtHours);
+      if (fr > frStart) {
+        const tx = [], ty = [], tl = new Float64Array(n), to = new Float64Array(n);
+        for (let k = 0; k <= TRAIL_SAMPLES; k++) {          // k = 0: la más vieja; k = TRAIL_SAMPLES: ahora
+          positionsAt(sim, frStart + (fr - frStart) * k / TRAIL_SAMPLES, tl, to);
+          const x = new Float32Array(n), y = new Float32Array(n);
+          for (let q = 0; q < n; q++) { x[q] = proj.x(to[q]); y[q] = proj.y(tl[q]); }
+          tx.push(x); ty.push(y);
+        }
+        ctx.save();
+        ctx.lineCap = 'round'; ctx.lineWidth = 1.6;
+        for (let k = 0; k < TRAIL_SAMPLES; k++) {
+          ctx.strokeStyle = `rgba(${th.trail},${(0.15 + 0.7 * (k + 1) / TRAIL_SAMPLES).toFixed(3)})`;
+          ctx.beginPath();
+          for (let q = 0; q < n; q++) {
+            if (stat[q] === Motor.STATUS_OUT) continue;
+            if (tx[k][q] === tx[k + 1][q] && ty[k][q] === ty[k + 1][q]) continue;
+            ctx.moveTo(tx[k][q], ty[k][q]); ctx.lineTo(tx[k + 1][q], ty[k + 1][q]);
+          }
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
       ctx.save();
-      ctx.beginPath(); hl.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath();
-      ctx.fillStyle = 'rgba(43,30,21,0.10)'; ctx.fill();
-      ctx.setLineDash([3, 4]); ctx.lineWidth = 1.4; ctx.strokeStyle = 'rgba(242,163,58,0.95)'; ctx.stroke();
+      ctx.beginPath();                                       // a la deriva: puntos pequeños y contrastantes
+      for (let q = 0; q < n; q++) {
+        if (stat[q] !== Motor.STATUS_OK) continue;
+        ctx.moveTo(xs[q] + 2.3, ys[q]); ctx.arc(xs[q], ys[q], 2.3, 0, 6.2832);
+      }
+      ctx.fillStyle = th.dot; ctx.fill();
+      ctx.lineWidth = 0.9; ctx.strokeStyle = th.dotCase; ctx.stroke();
+      ctx.beginPath();                                       // varadas en costa: rojo
+      for (let q = 0; q < n; q++) {
+        if (stat[q] !== Motor.STATUS_LAND) continue;
+        ctx.moveTo(xs[q] + 3.4, ys[q]); ctx.arc(xs[q], ys[q], 3.4, 0, 6.2832);
+      }
+      ctx.fillStyle = '#E2553F'; ctx.fill();
+      ctx.lineWidth = 1.2; ctx.strokeStyle = '#fff'; ctx.stroke();
       ctx.restore();
     }
 
-    // Mancha: círculos difusos que se acumulan (más partículas juntas = más oscuro)
-    const mpp = proj.mPerPx(sim.origin.lat);
-    const r = Math.max(9, Math.min(32, 8000 / mpp));
+    // 4) Centro de la mancha
     ctx.save();
-    for (let q = 0; q < n; q++) {
-      if (stat[q] === Motor.STATUS_OUT) continue;
-      ctx.drawImage(spriteGlow, xs[q] - r * 1.5, ys[q] - r * 1.5, r * 3, r * 3);
-    }
-    for (let q = 0; q < n; q++) {
-      if (stat[q] === Motor.STATUS_OUT) continue;
-      ctx.drawImage(spriteOil, xs[q] - r, ys[q] - r, r * 2, r * 2);
-    }
-    // Partículas individuales
-    for (let q = 0; q < n; q++) {
-      const s = stat[q];
-      if (s === Motor.STATUS_OUT) continue;
-      ctx.beginPath();
-      if (s === Motor.STATUS_LAND) {
-        ctx.arc(xs[q], ys[q], 3.4, 0, 6.2832);
-        ctx.fillStyle = '#E2553F'; ctx.fill();
-        ctx.lineWidth = 1.2; ctx.strokeStyle = '#fff'; ctx.stroke();
-      } else {
-        ctx.arc(xs[q], ys[q], 1.7, 0, 6.2832);
-        ctx.fillStyle = 'rgba(25,16,10,0.95)'; ctx.fill();
-      }
-    }
-    // Centro de la mancha
     ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,0.95)';
     ctx.beginPath(); ctx.moveTo(cx - 7, cy); ctx.lineTo(cx + 7, cy); ctx.moveTo(cx, cy - 7); ctx.lineTo(cx, cy + 7); ctx.stroke();
     ctx.lineWidth = 1.6; ctx.strokeStyle = '#0A6B74'; ctx.stroke();
