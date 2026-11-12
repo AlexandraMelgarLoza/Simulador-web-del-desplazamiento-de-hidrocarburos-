@@ -13,8 +13,12 @@
  * 2) DIFUSIÓN BROWNIANA: paso aleatorio normal por eje, sigma = sqrt(2 K dt)
  *    (relación de Einstein Var(x) = 2 K t). K = 10 m²/s por defecto (valor de NOAA GNOME).
  * 3) No se modela la corriente marina.
- * 4) VARAMIENTO: una partícula que entra a una celda sin dato (tierra) se detiene y queda
- *    "varada". Si sale del dominio del archivo, también se detiene.
+ * 4) VARAMIENTO: con el contorno fino de costa (opts.coast, de coast.data.js / coast.json), una
+ *    partícula cuyo paso termina en tierra, o cuyo punto medio cae en tierra, se detiene en su
+ *    última posición en el agua y queda "varada"; las celdas sin dato que son agua (lagunas,
+ *    bahías) toman el oleaje de la celda con dato más cercana. Sin contorno fino se usa la
+ *    rejilla de SEMAR: entrar a una celda sin dato cuenta como tierra (y la partícula queda dentro
+ *    de esa celda). Si sale del dominio del archivo, también se detiene ("fuera del dominio").
  *
  * Integración de Euler explícita. Metros a grados: dlat = dy / 111320,
  * dlon = dx / (111320 cos(lat)).
@@ -26,7 +30,7 @@
   const STATUS_OK = 0, STATUS_LAND = 1, STATUS_OUT = 2;
   const DEFAULT_WAVE_FACTOR = 1.0;   // multiplica la deriva de Stokes estimada
   const DEFAULT_DIFFUSIVITY = 10;    // K, m²/s
-  const DEFAULT_PARTICLES = 200;
+  const DEFAULT_PARTICLES = 300;     // igual que el valor inicial de index.html
   const MAX_PARTICLES = 1000;
   const MAX_DIFFUSIVITY = 1000;
   const MAX_WAVE_FACTOR = 10;

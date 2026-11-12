@@ -190,7 +190,8 @@ App.originMarker.on('dragend', () => {
     clearSim('Coordenadas actualizadas. Pulsa «Simular».');
   }
 }));
-setOrigin(19.15, -92.30);
+// Punto inicial: el que trae index.html en los campos de latitud y longitud (una sola fuente).
+setOrigin(parseFloat($('in-lat').value), parseFloat($('in-lon').value));
 
 /* ===================== Simulación ===================== */
 function numberOf(id, fallback) {

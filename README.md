@@ -1,56 +1,86 @@
-# Simulador de hidrocarburos — versión p5.js
+# Simulador de trayectoria de hidrocarburos — Sonda de Campeche
 
-Mapa (Leaflet: calles / satélite) + datos de SEMAR + simulación de la mancha, dibujados con p5.js.
-Sin servidor y sin Python: son solo archivos estáticos (se pueden alojar gratis, p. ej. GitHub Pages).
+Mapa (Leaflet: calles / satélite) + pronóstico de oleaje de SEMAR + simulación browniana de la mancha,
+dibujada con p5.js. Son solo archivos estáticos: funciona con un servidor local, abriendo `index.html`
+con doble clic, o alojado gratis (p. ej. GitHub Pages).
 
-## Correr en local (Mac)
+## Cómo abrirlo
+
+### Opción A: con doble clic (sin servidor ni Python)
+1. Abre `index.html` con doble clic (Chrome, Edge, Firefox o Safari).
+2. La página avisa que no hay datos: pulsa **Cargar archivo TXT** y elige `data/dirmarea.txt`
+   (o el archivo nuevo de SEMAR).
+3. Listo. La costa fina ya viene incluida (`data/coast.data.js`), así que no hace falta nada más.
+
+Sin servidor, el navegador no deja que la página lea archivos por su cuenta. Por eso el TXT se elige
+a mano. **Recargar datos** vuelve a leer el último archivo elegido.
+
+### Opción B: con servidor local (carga `data/dirmarea.txt` automáticamente)
+Windows (PowerShell o Símbolo del sistema):
+```bat
+cd C:\ruta\al\simulador
+python servidor.py
+```
+Mac / Linux (Terminal):
 ```bash
-cd simulador-p5
+cd /ruta/al/simulador
 python3 servidor.py
 ```
-Abre http://localhost:8000 (no sirve abrir index.html con doble clic: el navegador bloquea la lectura del TXT).
-`servidor.py` evita que el navegador guarde copias viejas de los archivos. Si la página se ve sin estilos, recarga con Cmd+Shift+R.
+Luego abre http://localhost:8000. Para detener el servidor, pulsa Ctrl + C.
+Otro puerto: `python servidor.py 8080`. Para que se vea desde otra máquina (VPS): `python servidor.py 8000 0.0.0.0`.
+`servidor.py` evita que el navegador guarde copias viejas. Si la página se ve sin estilos, recarga
+forzando: Ctrl+F5 (Windows) o Cmd+Shift+R (Mac).
+
+Los mosaicos del mapa (OpenStreetMap / Esri) y la fuente necesitan internet en ambas opciones.
 
 ## Uso
-1. Clic en el mapa (o arrastra el marcador, o escribe las coordenadas) para colocar el derrame.
-2. Ajusta inicio, duración y partículas; pulsa **Simular**.
-3. La barra de tiempo inferior reproduce la mancha hora por hora (1, 2, 4 u 8 h por segundo) y se puede arrastrar.
-4. Panel derecho: mapa base, capas (altura del oleaje, flechas de dirección del oleaje, oleaje en movimiento, cuadrícula) y formato de coordenadas.
+1. Haz clic en el mapa (o arrastra el marcador, o escribe las coordenadas) para colocar el derrame.
+2. Ajusta inicio, duración y partículas. En **Parámetros del modelo browniano** están la difusión K,
+   el **factor de deriva por oleaje** y la semilla. Pulsa **Simular**.
+3. La barra de tiempo reproduce la mancha hora por hora (1, 2, 4 u 8 h por segundo) y se puede arrastrar.
+4. **Estado de la mancha** muestra las partículas a la deriva, varadas y fuera del dominio, el área
+   aproximada (km²) y el ancho máximo (km) de la envolvente de las partículas en el agua, el centro
+   y la distancia al origen.
+5. Panel derecho: mapa base y capas. Las capas son: mancha (densidad), partículas y estelas
+   (últimas 4 h), altura del oleaje, flechas de dirección de propagación de la ola, oleaje en
+   movimiento, cuadrícula y línea de costa del modelo. Bajo el cursor se ven la altura de ola,
+   su dirección y la velocidad de deriva estimada.
 
 ## Actualizar los datos
-Reemplaza `data/dirmarea.txt` por el archivo nuevo y recarga la página (Cmd+R). Cada carga descarga el archivo sin usar caché.
+- Con servidor: reemplaza `data/dirmarea.txt` y recarga la página. Cada carga descarga el archivo sin caché.
+- Sin servidor: pulsa **Cargar archivo TXT** y elige el archivo nuevo.
+- Antes de publicar un TXT nuevo, valídalo con `python herramientas/validar_pronostico.py data/dirmarea.txt`
+  (en Mac: `python3`).
+- Si cambia `data/coast.json`, regenera la versión para doble clic:
+  `python herramientas/generar_coast_js.py`.
 
 ## Estructura
 - `index.html`        página
-- `servidor.py`       servidor local sin caché (python3 servidor.py)
+- `servidor.py`       servidor local sin caché (opcional)
 - `css/style.css`     estilos (tema marino claro)
-- `js/wavefield.js`   lector del TXT (port de semar_reader.py)
+- `js/wavefield.js`   lector del TXT (por URL o por archivo elegido) y cálculo de la deriva de Stokes
 - `js/coast.js`       costa fina: decide qué es tierra y qué es agua (prueba punto-en-polígono)
-- `js/motor.js`       motor browniano (port de motor.py): deriva por oleaje (Stokes) + difusión + varamiento
-- `js/sketch.js`      mapa y dibujo con p5.js (oleaje, cuadrícula, flujo de oleaje, flechas, mancha)
-- `js/ui.js`          controles, simulación, reproducción y lecturas
-- `vendor/`           Leaflet y p5.js incluidos (los mosaicos del mapa sí requieren internet)
+- `js/motor.js`       motor browniano: deriva por oleaje + difusión + varamiento; área y ancho de la mancha
+- `js/sketch.js`      mapa y dibujo con p5.js (oleaje, cuadrícula, flujo, flechas, mancha, partículas)
+- `js/ui.js`          controles, carga de datos, simulación, reproducción y lecturas
+- `vendor/`           Leaflet 1.9.4 y p5.js 1.9.4 incluidos
 - `herramientas/validar_pronostico.py` valida el TXT antes de publicarlo
-- `data/dirmarea.txt` datos de SEMAR
+- `herramientas/generar_coast_js.py`   genera `data/coast.data.js` a partir de `data/coast.json`
+- `data/dirmarea.txt` pronóstico de oleaje de SEMAR (`LON;LAT;dirolavto;alturaolavto`)
 - `data/coast.json`   contorno de costa (Natural Earth 1:10m, dominio público), 56 KB
+- `data/coast.data.js` el mismo contorno como script (`window.COAST_DATA`), para abrir con doble clic
 
-## Costa fina (lagunas y bahías)
-La rejilla de SEMAR (0.16° ≈ 18 km) marca como "tierra" toda celda sin dato, incluidas lagunas y bahías
-(p. ej. la Laguna de Términos). Por eso se usa `data/coast.json`:
-- Una partícula queda varada solo si toca tierra de verdad (se queda en la orilla, en su última posición en el agua).
-- En el agua costera sin dato de SEMAR se usa el oleaje de la celda con dato más cercana (hasta 4 celdas, ~70 km).
-  Es un supuesto: el oleaje dentro de una laguna suele ser menor que en mar abierto. Confirmar con SEMAR.
-- Límite: a escala 1:10M, lagunas o canales muy pequeños pueden aparecer como tierra. La capa
-  "Línea de costa del modelo" (panel derecho) muestra exactamente qué contorno se está usando.
-- Si `coast.json` no carga, la página avisa y vuelve al comportamiento anterior (solo rejilla).
-
-## Notas del modelo
-El motor browniano integra la **deriva por oleaje** (deriva de Stokes) y la difusión aleatoria,
-con varamiento costero. **No se usa el viento** ni se modela la corriente marina.
+## Modelo: deriva por oleaje + difusión browniana
+El motor integra la **deriva por oleaje** (deriva de Stokes) y la difusión aleatoria, con varamiento
+costero. **No se usa el viento** ni se modela la corriente marina.
 
 En cada paso de tiempo dt (1 h), para cada partícula (integración de Euler-Maruyama):
 
     x(t+dt) = x(t) + factor · Us · (dirección de propagación) · dt + N(0, σ),   σ = sqrt(2·K·dt)
+
+Los metros se pasan a grados con dlat = dy / 111 320 y dlon = dx / (111 320·cos lat).
+El oleaje se interpola linealmente en el tiempo entre los pasos del pronóstico (cada 3 h). En el
+espacio se usa la celda más cercana.
 
 **Deriva de Stokes.** El archivo de SEMAR trae la altura significante `alturaolavto` (Hs, m) y la
 dirección de donde viene la ola `dirolavto` (°), pero no el periodo. Por eso:
@@ -62,9 +92,31 @@ dirección de donde viene la ola `dirolavto` (°), pero no el periodo. Por eso:
    (≈ 9.5 km/día) y Hs = 2 m da 0.16 m/s.
 
 La deriva va en la **dirección de propagación** de la ola, opuesta a `dirolavto`.
-El **factor de deriva por oleaje** (1.0 por defecto, en «Parámetros del modelo browniano»)
-multiplica Us para calibrar el modelo. La difusión es K = 10 m²/s por defecto.
+El **factor de deriva por oleaje** (1.0 por defecto) multiplica Us para calibrar el modelo.
 
-Supuestos y límites: la fórmula es para una ola monocromática con H = Hs. Una formulación
+**Difusión browniana.** K = 10 m²/s por defecto (valor de NOAA GNOME). Con K = 0 todas las
+partículas siguen la misma trayectoria (solo deriva). La **semilla** permite repetir una simulación.
+
+**Varamiento.** Con la costa fina, una partícula cuyo paso termina en tierra, o cuyo punto medio
+cae en tierra, se queda en su última posición en el agua y cuenta como "varada". Si sale del
+dominio del archivo, se detiene y cuenta como "fuera del dominio".
+
+**Tamaño de la mancha.** En el mapa, cada partícula representa un círculo de 1 km de radio en el
+terreno (`PARTICLE_RADIUS_M` en `sketch.js`). Se convierte a píxeles con la escala del mapa, así que
+la mancha tiene tamaño real a cualquier zoom; abajo de 1.5 px se deja en 1.5 px solo para que se
+vea. El área y el ancho que aparecen en "Estado de la mancha" se calculan con la envolvente convexa
+de las partículas en el agua, no con esos círculos.
+
+**Supuestos y límites.** La fórmula es para una ola monocromática con H = Hs. Una formulación
 espectral daría una deriva algo menor, y el periodo real puede diferir del de mar desarrollado
 (por ejemplo, con mar de fondo). Ambas cosas se pueden compensar con el factor.
+
+## Costa fina (lagunas y bahías)
+La rejilla de SEMAR (0.16° ≈ 18 km) marca como "tierra" toda celda sin dato, incluidas lagunas y bahías
+(p. ej. la Laguna de Términos). Por eso se usa el contorno de `data/coast.data.js` (o `data/coast.json`):
+- Una partícula queda varada solo si toca tierra de verdad (se queda en la orilla, en su última posición en el agua).
+- En el agua costera sin dato de SEMAR se usa el oleaje de la celda con dato más cercana (hasta 4 celdas, ~70 km).
+  Es un supuesto: el oleaje dentro de una laguna suele ser menor que en mar abierto. Confirmar con SEMAR.
+- Límite: a escala 1:10M, lagunas o canales muy pequeños pueden aparecer como tierra. La capa
+  "Línea de costa del modelo" (panel derecho) muestra exactamente qué contorno se está usando.
+- Si la costa no carga, la página avisa y usa solo la rejilla: entrar a una celda sin dato cuenta como tierra.
