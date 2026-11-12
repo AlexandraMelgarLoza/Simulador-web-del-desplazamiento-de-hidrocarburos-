@@ -15,7 +15,7 @@ Abre http://localhost:8000 (no sirve abrir index.html con doble clic: el navegad
 1. Clic en el mapa (o arrastra el marcador, o escribe las coordenadas) para colocar el derrame.
 2. Ajusta inicio, duración y partículas; pulsa **Simular**.
 3. La barra de tiempo inferior reproduce la mancha hora por hora (1, 2, 4 u 8 h por segundo) y se puede arrastrar.
-4. Panel derecho: mapa base, capas (oleaje, flechas, viento en movimiento, cuadrícula) y formato de coordenadas.
+4. Panel derecho: mapa base, capas (altura del oleaje, flechas de dirección del oleaje, oleaje en movimiento, cuadrícula) y formato de coordenadas.
 
 ## Actualizar los datos
 Reemplaza `data/dirmarea.txt` por el archivo nuevo y recarga la página (Cmd+R). Cada carga descarga el archivo sin usar caché.
@@ -26,8 +26,8 @@ Reemplaza `data/dirmarea.txt` por el archivo nuevo y recarga la página (Cmd+R).
 - `css/style.css`     estilos (tema marino claro)
 - `js/wavefield.js`   lector del TXT (port de semar_reader.py)
 - `js/coast.js`       costa fina: decide qué es tierra y qué es agua (prueba punto-en-polígono)
-- `js/motor.js`       motor browniano (port de motor.py): deriva por ola/viento + difusión + varamiento
-- `js/sketch.js`      mapa y dibujo con p5.js (oleaje, cuadrícula, flujo de viento, flechas, mancha)
+- `js/motor.js`       motor browniano (port de motor.py): deriva por oleaje (Stokes) + difusión + varamiento
+- `js/sketch.js`      mapa y dibujo con p5.js (oleaje, cuadrícula, flujo de oleaje, flechas, mancha)
 - `js/ui.js`          controles, simulación, reproducción y lecturas
 - `vendor/`           Leaflet y p5.js incluidos (los mosaicos del mapa sí requieren internet)
 - `herramientas/validar_pronostico.py` valida el TXT antes de publicarlo
@@ -38,16 +38,33 @@ Reemplaza `data/dirmarea.txt` por el archivo nuevo y recarga la página (Cmd+R).
 La rejilla de SEMAR (0.16° ≈ 18 km) marca como "tierra" toda celda sin dato, incluidas lagunas y bahías
 (p. ej. la Laguna de Términos). Por eso se usa `data/coast.json`:
 - Una partícula queda varada solo si toca tierra de verdad (se queda en la orilla, en su última posición en el agua).
-- En el agua costera sin dato de SEMAR se usa el viento de la celda con dato más cercana (hasta 4 celdas, ~70 km).
-  Es un supuesto: el viento dentro de una laguna puede diferir del de mar abierto. Confirmar con SEMAR.
+- En el agua costera sin dato de SEMAR se usa el oleaje de la celda con dato más cercana (hasta 4 celdas, ~70 km).
+  Es un supuesto: el oleaje dentro de una laguna suele ser menor que en mar abierto. Confirmar con SEMAR.
 - Límite: a escala 1:10M, lagunas o canales muy pequeños pueden aparecer como tierra. La capa
   "Línea de costa del modelo" (panel derecho) muestra exactamente qué contorno se está usando.
 - Si `coast.json` no carga, la página avisa y vuelve al comportamiento anterior (solo rejilla).
 
 ## Notas del modelo
-El motor browniano integra la deriva por ola/viento y la difusión aleatoria, con varamiento costero.
-Usa las columnas `dirolavto` (dirección de donde viene la ola/viento) y `alturaolavto`
-para estimar el viento (`U = sqrt(Hs/0.0246)`); la deriva va en sentido opuesto a `dirolavto`,
-con arrastre de 3 % y difusión K = 10 m²/s.
-No se modela la corriente marina. Verificado contra el motor de Python: con K = 0 las trayectorias
-coinciden hasta ~1e-8°. El coeficiente 0.0246 está por confirmar (ver comentarios en wavefield.js).
+El motor browniano integra la **deriva por oleaje** (deriva de Stokes) y la difusión aleatoria,
+con varamiento costero. **No se usa el viento** ni se modela la corriente marina.
+
+En cada paso de tiempo dt (1 h), para cada partícula (integración de Euler-Maruyama):
+
+    x(t+dt) = x(t) + factor · Us · (dirección de propagación) · dt + N(0, σ),   σ = sqrt(2·K·dt)
+
+**Deriva de Stokes.** El archivo de SEMAR trae la altura significante `alturaolavto` (Hs, m) y la
+dirección de donde viene la ola `dirolavto` (°), pero no el periodo. Por eso:
+
+1. Periodo estimado para mar desarrollado: `T ≈ 3.86·√Hs` (s).
+2. Deriva de Stokes en superficie, ola lineal en aguas profundas (amplitud a = Hs/2,
+   k = 4π²/(gT²), ω = 2π/T):  `Us = ω·k·a² = 2·π³·Hs² / (g·T³)`.
+3. Sustituyendo T: `Us = 2π³ / (g·3.86³) · √Hs ≈ 0.11·√Hs` m/s. Por ejemplo, Hs = 1 m da 0.11 m/s
+   (≈ 9.5 km/día) y Hs = 2 m da 0.16 m/s.
+
+La deriva va en la **dirección de propagación** de la ola, opuesta a `dirolavto`.
+El **factor de deriva por oleaje** (1.0 por defecto, en «Parámetros del modelo browniano»)
+multiplica Us para calibrar el modelo. La difusión es K = 10 m²/s por defecto.
+
+Supuestos y límites: la fórmula es para una ola monocromática con H = Hs. Una formulación
+espectral daría una deriva algo menor, y el periodo real puede diferir del de mar desarrollado
+(por ejemplo, con mar de fondo). Ambas cosas se pueden compensar con el factor.

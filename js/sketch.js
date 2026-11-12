@@ -5,10 +5,10 @@
  *  - Leaflet pone el mapa base (calles / satélite), el zoom y el arrastre.
  *  - p5.js dibuja encima, en un canvas transparente. Pasa de lat/lon a píxeles con una
  *    proyección Web Mercator propia (makeProjector) que coincide con la de Leaflet.
- *  - Capas, de abajo hacia arriba: oleaje (color) · cuadrícula · viento en movimiento ·
- *    flechas · mancha de hidrocarburos · celda bajo el cursor.
+ *  - Capas, de abajo hacia arriba: oleaje (color) · cuadrícula · oleaje en movimiento ·
+ *    flechas (dirección de propagación de la ola) · mancha de hidrocarburos · celda bajo el cursor.
  *  - El tiempo (App.state.h) son horas desde el primer paso del pronóstico y puede ser
- *    fraccionario: el viento y las partículas se interpolan, así el movimiento es continuo.
+ *    fraccionario: el oleaje y las partículas se interpolan, así el movimiento es continuo.
  */
 
 const $ = (id) => document.getElementById(id);
@@ -106,7 +106,7 @@ let interp = null, interpKey = null;
 App.getInterp = () => {
   const f = S.field;
   if (!f) return null;
-  if (!interp || interp.wu.length !== f.nlat * f.nlon) { interp = f.makeFrame(); interpKey = null; }
+  if (!interp || interp.su.length !== f.nlat * f.nlon) { interp = f.makeFrame(); interpKey = null; }
   const key = `${S.h.toFixed(4)}|${f.runTime}`;
   if (key !== interpKey) { f.interpolateInto(S.h, interp); interpKey = key; }
   return interp;
@@ -135,8 +135,9 @@ function makeSprite(rgb, a0, a1) {
 const spriteOil = makeSprite('36,24,16', 0.42, 0.20);
 const spriteGlow = makeSprite('242,163,58', 0.38, 0.14);
 
-/* Partículas del flujo de viento (las líneas en movimiento) */
-const FLOW_N = 800, TRAIL = 9, FLOW_PX_PER_MS = 9;   // px/s por cada m/s de viento
+/* Partículas del flujo de oleaje (las líneas en movimiento). Solo es visual: la deriva de Stokes
+   es de ~0.1 m/s, así que se exagera para que el movimiento se note en pantalla. */
+const FLOW_N = 800, TRAIL = 9, FLOW_PX_PER_MS = 300;   // px/s por cada m/s de deriva
 const flow = {
   lat: new Float32Array(FLOW_N), lon: new Float32Array(FLOW_N),
   age: new Float32Array(FLOW_N), life: new Float32Array(FLOW_N),
@@ -232,11 +233,12 @@ new p5((p) => {
       const cy = (ry[i] + ry[i + 1]) / 2;
       if (cy < -20 || cy > H + 20) continue;
       for (let j = Math.floor(step / 2); j < f.nlon; j += step) {
-        const c = i * f.nlon + j, u = fr.wu[c], v = fr.wv[c];
+        const c = i * f.nlon + j, u = fr.su[c], v = fr.sv[c];
         if (Number.isNaN(u)) continue;
         const cx = (rx[j] + rx[j + 1]) / 2;
         if (cx < -20 || cx > W + 20) continue;
-        const speed = Math.hypot(u, v), len = Math.max(9, Math.min(maxLen, 7 + speed * 3));
+        // Dirección: hacia donde se propaga la ola. Largo: proporcional a la altura de ola.
+        const len = Math.max(9, Math.min(maxLen, 8 + fr.hs[c] * 9));
         const ang = Math.atan2(-v, u), ca = Math.cos(ang), sa = Math.sin(ang);
         const x1 = cx - ca * len / 2, y1 = cy - sa * len / 2, x2 = cx + ca * len / 2, y2 = cy + sa * len / 2;
         const head = Math.min(6, len * 0.42);
@@ -253,9 +255,9 @@ new p5((p) => {
     ctx.restore();
   }
 
-  /* Viento en un punto: null si es tierra. Con costa fina, las aguas costeras sin dato
-     (lagunas, bahías) usan el viento de la celda con dato más cercana. */
-  function windAt(f, lat, lon) {
+  /* Deriva por oleaje en un punto (m/s, factor 1): null si es tierra. Con costa fina, las aguas
+     costeras sin dato (lagunas, bahías) usan el oleaje de la celda con dato más cercana. */
+  function driftAt(f, lat, lon) {
     const cell = f.cellAt(lat, lon);
     if (!cell) return null;
     let c = cell.i * f.nlon + cell.j;
@@ -264,17 +266,17 @@ new p5((p) => {
       c = f.fillIdx[c];
       if (c < 0) return null;
     }
-    const u = interp.wu[c], v = interp.wv[c];
+    const u = interp.su[c], v = interp.sv[c];
     return Number.isNaN(u) ? null : [u, v];
   }
 
-  /* ----- Flujo de viento: líneas que se mueven con el viento ----- */
+  /* ----- Flujo de oleaje: líneas que avanzan en la dirección de propagación de la ola ----- */
   function respawn(n, f, b) {
     for (let t = 0; t < 6; t++) {
       const la = b.getSouth() + Math.random() * (b.getNorth() - b.getSouth());
       const lo = b.getWest() + Math.random() * (b.getEast() - b.getWest());
       flow.lat[n] = la; flow.lon[n] = lo;
-      if (windAt(f, la, lo)) break;
+      if (driftAt(f, la, lo)) break;
     }
     flow.age[n] = 0;
     flow.life[n] = 45 + Math.random() * 70;
@@ -290,12 +292,12 @@ new p5((p) => {
     const kDeg = proj.degPerPx, rad = Math.PI / 180;
     for (let n = 0; n < FLOW_N; n++) {
       let lat = flow.lat[n], lon = flow.lon[n];
-      const wind = windAt(f, lat, lon);
+      const drift = driftAt(f, lat, lon);
       const x = proj.x(lon), y = proj.y(lat);
-      if (!wind || flow.age[n] >= flow.life[n] || x < -30 || x > W + 30 || y < -30 || y > H + 30) {
+      if (!drift || flow.age[n] >= flow.life[n] || x < -30 || x > W + 30 || y < -30 || y > H + 30) {
         respawn(n, f, b); continue;
       }
-      const u = wind[0], v = wind[1];
+      const u = drift[0], v = drift[1];
       // desplazamiento en píxeles → grados (en latitud, 1 px = kDeg·cos(lat) grados)
       lon += u * FLOW_PX_PER_MS * dt * kDeg;
       lat += v * FLOW_PX_PER_MS * dt * kDeg * Math.cos(lat * rad);

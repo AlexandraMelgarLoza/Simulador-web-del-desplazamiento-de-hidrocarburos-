@@ -70,14 +70,14 @@
           <label class="field">Difusión K (m²/s)
             <input type="number" id="in-k" min="0" max="1000" step="any" value="10">
           </label>
-          <label class="field">Arrastre del viento (%)
-            <input type="number" id="in-drag" min="0" max="10" step="any" value="3">
+          <label class="field">Factor de deriva por oleaje
+            <input type="number" id="in-wave-factor" min="0" max="10" step="any" value="1">
           </label>
         </div>
         <label class="field">Semilla (opcional, para repetir una simulación)
           <input type="number" id="in-seed" step="1" placeholder="aleatoria">
         </label>
-        <p class="hint">K controla la difusión browniana. La deriva sigue el viento inferido de las olas de SEMAR; no se modela la corriente marina.</p>
+        <p class="hint">K controla la difusión browniana. La deriva es la de Stokes por oleaje, en la dirección en que se propaga la ola: Us ≈ 0.11·√Hs m/s (periodo estimado T ≈ 3.86·√Hs), multiplicada por el factor. No se modela el viento ni la corriente marina.</p>
       </details>
       <div class="btn-row">
         <button type="button" id="btn-simulate" class="btn btn-primary">Simular</button>
@@ -135,8 +135,8 @@
       <fieldset>
         <legend>Capas</legend>
         <label class="choice"><input type="checkbox" id="chk-heat" checked> Altura del oleaje (color)</label>
-        <label class="choice"><input type="checkbox" id="chk-arrows" checked> Viento (flechas)</label>
-        <label class="choice"><input type="checkbox" id="chk-flow" checked> Viento en movimiento</label>
+        <label class="choice"><input type="checkbox" id="chk-arrows" checked> Dirección del oleaje (flechas)</label>
+        <label class="choice"><input type="checkbox" id="chk-flow" checked> Oleaje en movimiento</label>
         <label class="choice"><input type="checkbox" id="chk-grid" checked> Cuadrícula de coordenadas</label>
         <label class="choice"><input type="checkbox" id="chk-coast"> Línea de costa del modelo</label>
       </fieldset>
@@ -149,8 +149,10 @@
         <dd id="coord-cursor">—</dd>
         <dt>Altura del oleaje</dt>
         <dd id="val-hs">—</dd>
-        <dt>Viento</dt>
-        <dd id="val-wind">—</dd>
+        <dt>Dirección de la ola</dt>
+        <dd id="val-dir">—</dd>
+        <dt>Deriva estimada</dt>
+        <dd id="val-drift">—</dd>
       </dl>
       <label class="field">Formato de coordenadas
         <select id="coord-format">
@@ -170,7 +172,7 @@
         <li><span class="dot dot-origin"></span>Punto de derrame</li>
         <li><span class="dash"></span>Recorrido del centro</li>
       </ul>
-      <p class="hint">Color: altura del oleaje de viento. Flechas y líneas en movimiento: hacia dónde sopla el viento estimado.</p>
+      <p class="hint">Color: altura significante del oleaje. Flechas y líneas en movimiento: hacia dónde se propaga la ola, que es la dirección en que deriva el hidrocarburo. El largo de la flecha crece con la altura de ola.</p>
     </section>
 
     <section class="panel-block">
@@ -188,10 +190,10 @@
 
 <script src="vendor/leaflet/leaflet.js?v=4"></script>
 <script src="vendor/p5/p5.min.js?v=4"></script>
-<script src="js/wavefield.js?v=5"></script>
+<script src="js/wavefield.js?v=6"></script>
 <script src="js/coast.js?v=4"></script>
-<script src="js/motor.js?v=5"></script>
-<script src="js/sketch.js?v=4"></script>
-<script src="js/ui.js?v=4"></script>
+<script src="js/motor.js?v=6"></script>
+<script src="js/sketch.js?v=6"></script>
+<script src="js/ui.js?v=6"></script>
 </body>
 </html>

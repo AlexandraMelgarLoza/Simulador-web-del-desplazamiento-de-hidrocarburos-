@@ -221,7 +221,7 @@ function runSimulation() {
       durationHours: numberOf('in-duration', 120),
       n: numberOf('in-particles', Motor.DEFAULT_PARTICLES),
       diffusivity: numberOf('in-k', Motor.DEFAULT_DIFFUSIVITY),
-      drag: numberOf('in-drag', Motor.DRAG_COEF * 100) / 100,
+      waveFactor: numberOf('in-wave-factor', Motor.DEFAULT_WAVE_FACTOR),
       seed: seedRaw === '' ? null : Number(seedRaw),
       coast: S2.coast,
     });
@@ -247,6 +247,14 @@ $('btn-clear').addEventListener('click', () => clearSim('Simulación borrada. Co
 
 /* ===================== Lectura bajo el cursor ===================== */
 let lastLatLng = null;
+/* Dirección de propagación de la ola y velocidad de deriva (con el factor elegido) a partir de su, sv. */
+function showWave(u, v, suffix) {
+  const to = (Math.atan2(u, v) * 180 / Math.PI + 360) % 360;              // hacia dónde va la ola
+  const factor = numberOf('in-wave-factor', Motor.DEFAULT_WAVE_FACTOR);
+  const sp = Math.hypot(u, v) * (Number.isFinite(factor) ? factor : Motor.DEFAULT_WAVE_FACTOR);
+  $('val-dir').textContent = `hacia ${compass(to)} (${Math.round(to)}°) · viene del ${compass(to + 180)}${suffix}`;
+  $('val-drift').textContent = `${sp.toFixed(2)} m/s (${(sp * 3.6).toFixed(2)} km/h)${suffix}`;
+}
 function updateHover(latlng) {
   const f = S2.field;
   const ll = latlng ? latlng.wrap() : null;
@@ -255,26 +263,24 @@ function updateHover(latlng) {
   S2.hover = cell;
   if (!cell) {
     $('val-hs').textContent = ll && f ? 'Fuera del dominio de datos' : '—';
-    $('val-wind').textContent = '—';
+    $('val-dir').textContent = '—';
+    $('val-drift').textContent = '—';
   } else {
     const fr = App.getInterp(), c = f.index(cell.i, cell.j);
     if (Number.isNaN(fr.hs[c])) {
       const c2 = f.fillIdx[c];
-      if (S2.coast && !S2.coast.isLand(ll.lat, ll.lng) && c2 >= 0 && !Number.isNaN(fr.wu[c2])) {
+      if (S2.coast && !S2.coast.isLand(ll.lat, ll.lng) && c2 >= 0 && !Number.isNaN(fr.su[c2])) {
         // agua costera (laguna, bahía) sin dato en la rejilla: se usa la celda más cercana
-        const u = fr.wu[c2], v = fr.wv[c2];
-        const from = (Math.atan2(-u, -v) * 180 / Math.PI + 360) % 360;
-        $('val-hs').textContent = 'Agua costera (sin dato de oleaje)';
-        $('val-wind').textContent = `≈ ${Math.hypot(u, v).toFixed(1)} m/s · de ${compass(from)} (celda cercana)`;
+        $('val-hs').textContent = `≈ ${fr.hs[c2].toFixed(2)} m (agua costera, celda cercana)`;
+        showWave(fr.su[c2], fr.sv[c2], ' (celda cercana)');
       } else {
         $('val-hs').textContent = S2.coast ? 'Tierra' : 'Tierra (sin dato)';
-        $('val-wind').textContent = '—';
+        $('val-dir').textContent = '—';
+        $('val-drift').textContent = '—';
       }
     } else {
-      const u = fr.wu[c], v = fr.wv[c];
-      const from = (Math.atan2(-u, -v) * 180 / Math.PI + 360) % 360;       // de dónde viene el viento
       $('val-hs').textContent = `${fr.hs[c].toFixed(2)} m`;
-      $('val-wind').textContent = `${Math.hypot(u, v).toFixed(1)} m/s · de ${compass(from)} (${Math.round(from)}°)`;
+      showWave(fr.su[c], fr.sv[c], '');
     }
   }
   App.redraw();
@@ -291,6 +297,7 @@ $('chk-arrows').addEventListener('change', (e) => { S2.showArrows = e.target.che
 $('chk-coast').addEventListener('change', (e) => { S2.showCoast = e.target.checked; App.redraw(); });
 $('chk-grid').addEventListener('change', (e) => { S2.showGrid = e.target.checked; App.redraw(); });
 $('chk-flow').addEventListener('change', (e) => { S2.showFlow = e.target.checked; App.refreshLoop(); });
+$('in-wave-factor').addEventListener('input', () => updateHover(lastLatLng));
 $('coord-format').addEventListener('change', (e) => {
   S2.fmt = e.target.value;
   updateHover(lastLatLng);

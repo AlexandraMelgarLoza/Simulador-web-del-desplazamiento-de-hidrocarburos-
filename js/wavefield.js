@@ -9,12 +9,26 @@
  *   ...
  *
  * -9.99e+08 = sin dato = tierra.
- * Viento estimado a partir del oleaje de viento:  U = sqrt(Hs / PM_COEF).
+ *
+ * DERIVA POR OLEAJE (deriva de Stokes en superficie, aguas profundas)
+ * El archivo trae solo la altura significante Hs (alturaolavto) y la dirección de donde viene
+ * la ola (dirolavto); no trae periodo. Se estima así:
+ *
+ *   1) Periodo de mar desarrollado:        T ≈ PERIOD_COEF · sqrt(Hs),  PERIOD_COEF = 3.86 s/m^½
+ *   2) Deriva de Stokes en la superficie (ola lineal en aguas profundas, amplitud a = Hs/2,
+ *      número de onda k = 4π² / (g T²), frecuencia ω = 2π / T):
+ *          Us = ω · k · a² = 2 π³ Hs² / (g T³)
+ *   3) Sustituyendo T:  Us = 2 π³ / (g · 3.86³) · sqrt(Hs) ≈ 0.11 · sqrt(Hs)   [m/s, Hs en m]
+ *
+ * La deriva va en la dirección de PROPAGACIÓN de la ola, es decir, opuesta a dirolavto.
+ * El motor la multiplica por un "factor de deriva por oleaje" (1.0 por defecto) para calibrarla.
  */
 (function (root) {
   const FILL_THRESHOLD = -1e8;
-  const WAVE_DIR_CONVENTION = 'from';   // Dirección de donde viene, como el viento
-  const PM_COEF = 0.0246;               // Hs = PM_COEF * U^2 (por confirmar, ver README)
+  const WAVE_DIR_CONVENTION = 'from';   // dirolavto = dirección de donde VIENE la ola
+  const G = 9.81;                       // gravedad, m/s²
+  const PERIOD_COEF = 3.86;             // T ≈ PERIOD_COEF · sqrt(Hs)  (mar desarrollado)
+  const STOKES_COEF = 2 * Math.PI ** 3 / (G * PERIOD_COEF ** 3);   // ≈ 0.1099; Us = STOKES_COEF · sqrt(Hs)
   const REQUIRED = ['lon', 'lat', 'dirolavto', 'alturaolavto'];
   const MONTHS = { JAN: 1, ENE: 1, FEB: 2, MAR: 3, APR: 4, ABR: 4, MAY: 5, JUN: 6, JUL: 7,
                    AUG: 8, AGO: 8, SEP: 9, OCT: 10, NOV: 11, DEC: 12, DIC: 12 };
@@ -38,6 +52,11 @@
     return { run, lead: +lead };
   }
 
+  /* Deriva de Stokes en superficie (m/s) para una altura significante hs (m). Ver encabezado. */
+  const stokesDrift = (hs) => STOKES_COEF * Math.sqrt(Math.max(hs, 0));
+  /* Periodo estimado (s) para una altura significante hs (m). */
+  const wavePeriod = (hs) => PERIOD_COEF * Math.sqrt(Math.max(hs, 0));
+
   class WaveField {
     constructor(runTime, times, lat0, lon0, dlat, dlon, nlat, nlon, direction, hs, warnings) {
       this.runTime = runTime;              // ms UTC
@@ -48,24 +67,26 @@
       this.direction = direction;          // Float32Array[nt][nlat*nlon], NaN = tierra
       this.hs = hs;
       this.warnings = warnings;
+      // Velocidad de deriva de Stokes (m/s, factor 1) por celda: su hacia el este, sv hacia el norte.
+      // Con convención "from" la deriva va al revés de dirolavto (hacia donde se propaga la ola).
       const sign = WAVE_DIR_CONVENTION === 'from' ? -1 : 1;
-      this.wu = []; this.wv = [];
+      this.su = []; this.sv = [];
       for (let k = 0; k < times.length; k++) {
         const u = new Float32Array(nlat * nlon), v = new Float32Array(nlat * nlon);
         for (let c = 0; c < u.length; c++) {
-          const sp = Math.sqrt(Math.max(hs[k][c], 0) / PM_COEF);   // NaN se propaga
+          const sp = stokesDrift(hs[k][c]);                 // NaN se propaga
           const th = direction[k][c] * Math.PI / 180;
           u[c] = sign * sp * Math.sin(th);
           v[c] = sign * sp * Math.cos(th);
         }
-        this.wu.push(u); this.wv.push(v);
+        this.su.push(u); this.sv.push(v);
       }
       this.buildFill(4);
     }
 
     /*
      * Para cada celda sin dato guarda el índice de la celda CON dato más cercana (a lo más
-     * `maxRadius` celdas; -1 si no hay). Sirve para dar viento a las aguas costeras (lagunas,
+     * `maxRadius` celdas; -1 si no hay). Sirve para dar deriva a las aguas costeras (lagunas,
      * bahías) que la rejilla de SEMAR marca como "tierra". Las celdas con dato se apuntan a sí mismas.
      */
     buildFill(maxRadius) {
@@ -124,16 +145,16 @@
     }
     makeFrame() {
       const n = this.nlat * this.nlon;
-      return { wu: new Float32Array(n), wv: new Float32Array(n), hs: new Float32Array(n) };
+      return { su: new Float32Array(n), sv: new Float32Array(n), hs: new Float32Array(n) };
     }
-    /* Viento y altura de oleaje interpolados a la hora th, escritos en `out` (de makeFrame). */
+    /* Deriva por oleaje y altura de ola interpoladas a la hora th, escritas en `out` (de makeFrame). */
     interpolateInto(th, out) {
       const { k0, k1, w } = this.timeWeights(th);
-      const a = 1 - w, wu0 = this.wu[k0], wu1 = this.wu[k1], wv0 = this.wv[k0], wv1 = this.wv[k1],
+      const a = 1 - w, su0 = this.su[k0], su1 = this.su[k1], sv0 = this.sv[k0], sv1 = this.sv[k1],
             h0 = this.hs[k0], h1 = this.hs[k1];
-      for (let c = 0; c < out.wu.length; c++) {
-        out.wu[c] = a * wu0[c] + w * wu1[c];
-        out.wv[c] = a * wv0[c] + w * wv1[c];
+      for (let c = 0; c < out.su.length; c++) {
+        out.su[c] = a * su0[c] + w * su1[c];
+        out.sv[c] = a * sv0[c] + w * sv1[c];
         out.hs[c] = a * h0[c] + w * h1[c];
       }
       return out;
@@ -220,7 +241,8 @@
     return field;
   }
 
-  const api = { WaveField, SemarFormatError, parseSemarWaves, loadSemarWaves, PM_COEF, rint };
+  const api = { WaveField, SemarFormatError, parseSemarWaves, loadSemarWaves,
+                stokesDrift, wavePeriod, STOKES_COEF, PERIOD_COEF, rint };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.SemarData = api;
 })(typeof window !== 'undefined' ? window : globalThis);

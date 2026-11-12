@@ -1,13 +1,15 @@
 'use strict';
 /*
- * Motor browniano de dispersión de hidrocarburos con deriva por viento.
+ * Motor browniano de dispersión de hidrocarburos con deriva por oleaje.
  * Port de utils/motor.py; integra la deriva y la difusión con Euler-Maruyama.
  *
  * En cada paso dt:   posición(t + dt) = posición(t) + DERIVA * dt + DIFUSIÓN
  *
- * 1) DERIVA POR VIENTO: el hidrocarburo se mueve en sentido opuesto a la dirección "de donde
- *    viene" indicada por SEMAR, con una fracción de la velocidad (arrastre, 3 %):
- *    v = DRAG_COEF * U. La velocidad se estima de la altura de ola (ver wavefield.js).
+ * 1) DERIVA POR OLEAJE (deriva de Stokes): el hidrocarburo se mueve en la dirección de
+ *    propagación de la ola (opuesta a dirolavto, que indica de dónde viene), con velocidad
+ *    v = factor · Us,  Us = 2π³Hs²/(gT³) con T ≈ 3.86·sqrt(Hs)  →  Us ≈ 0.11·sqrt(Hs) m/s
+ *    (detalle en wavefield.js). El factor (1.0 por defecto) permite calibrar la deriva.
+ *    No se usa el viento.
  * 2) DIFUSIÓN BROWNIANA: paso aleatorio normal por eje, sigma = sqrt(2 K dt)
  *    (relación de Einstein Var(x) = 2 K t). K = 10 m²/s por defecto (valor de NOAA GNOME).
  * 3) No se modela la corriente marina.
@@ -22,12 +24,12 @@
   const { rint } = W;
 
   const STATUS_OK = 0, STATUS_LAND = 1, STATUS_OUT = 2;
-  const DRAG_COEF = 0.03;            // fracción del viento con que se mueve el hidrocarburo
+  const DEFAULT_WAVE_FACTOR = 1.0;   // multiplica la deriva de Stokes estimada
   const DEFAULT_DIFFUSIVITY = 10;    // K, m²/s
   const DEFAULT_PARTICLES = 200;
   const MAX_PARTICLES = 1000;
   const MAX_DIFFUSIVITY = 1000;
-  const MAX_DRAG = 0.10;
+  const MAX_WAVE_FACTOR = 10;
   const M_PER_DEG = 111320;
 
   class SimulationError extends Error {}
@@ -55,33 +57,33 @@
     };
   }
 
-  /* Estado y viento en varios puntos a la hora tMs (interpolado en el tiempo, celda más cercana
-     en el espacio). Igual que WaveField.sample_many.
+  /* Estado y deriva por oleaje (su, sv en m/s, factor 1) en varios puntos a la hora tMs
+     (interpolada en el tiempo, celda más cercana en el espacio). Igual que WaveField.sample_many.
      Con `coast` (contorno fino): es tierra solo lo que el contorno dice que es tierra, y en las
-     celdas sin dato que son agua (lagunas, bahías) se usa el viento de la celda con dato más cercana. */
+     celdas sin dato que son agua (lagunas, bahías) se usa el oleaje de la celda con dato más cercana. */
   function sampleMany(field, lats, lons, tMs, out, coast) {
     const n = lats.length;
     const status = out ? out.status : new Int8Array(n);
-    const wu = out ? out.wu : new Float64Array(n);
-    const wv = out ? out.wv : new Float64Array(n);
+    const su = out ? out.su : new Float64Array(n);
+    const sv = out ? out.sv : new Float64Array(n);
     const { k0, k1, w } = field.timeWeights((tMs - field.times[0]) / 3.6e6);
-    const a = 1 - w, U0 = field.wu[k0], U1 = field.wu[k1], V0 = field.wv[k0], V1 = field.wv[k1];
+    const a = 1 - w, U0 = field.su[k0], U1 = field.su[k1], V0 = field.sv[k0], V1 = field.sv[k1];
     for (let p = 0; p < n; p++) {
       const i = rint((lats[p] - field.lat0) / field.dlat);
       const j = rint((lons[p] - field.lon0) / field.dlon);
-      if (i < 0 || i >= field.nlat || j < 0 || j >= field.nlon) { status[p] = STATUS_OUT; wu[p] = NaN; wv[p] = NaN; continue; }
+      if (i < 0 || i >= field.nlat || j < 0 || j >= field.nlon) { status[p] = STATUS_OUT; su[p] = NaN; sv[p] = NaN; continue; }
       let c = i * field.nlon + j;
       if (coast) {
-        if (coast.isLand(lats[p], lons[p])) { status[p] = STATUS_LAND; wu[p] = NaN; wv[p] = NaN; continue; }
+        if (coast.isLand(lats[p], lons[p])) { status[p] = STATUS_LAND; su[p] = NaN; sv[p] = NaN; continue; }
         c = field.fillIdx[c];
-        if (c < 0) { status[p] = STATUS_OK; wu[p] = 0; wv[p] = 0; continue; }   // agua sin dato cercano: solo difusión
+        if (c < 0) { status[p] = STATUS_OK; su[p] = 0; sv[p] = 0; continue; }   // agua sin dato cercano: solo difusión
       }
       const u = a * U0[c] + w * U1[c], v = a * V0[c] + w * V1[c];
-      if (coast) { status[p] = STATUS_OK; wu[p] = Number.isNaN(u) ? 0 : u; wv[p] = Number.isNaN(v) ? 0 : v; continue; }
-      wu[p] = u; wv[p] = v;
+      if (coast) { status[p] = STATUS_OK; su[p] = Number.isNaN(u) ? 0 : u; sv[p] = Number.isNaN(v) ? 0 : v; continue; }
+      su[p] = u; sv[p] = v;
       status[p] = (Number.isNaN(u) || Number.isNaN(v)) ? STATUS_LAND : STATUS_OK;
     }
-    return { status, wu, wv };
+    return { status, su, sv };
   }
 
   const stamp = (ms) => new Date(ms).toISOString().slice(0, 16).replace('T', ' ');
@@ -95,15 +97,15 @@
     const o = opts || {};
     const durationHours = o.durationHours ?? 120, dtHours = o.dtHours ?? 1;
     let n = Math.trunc(o.n ?? DEFAULT_PARTICLES);
-    const K = o.diffusivity ?? DEFAULT_DIFFUSIVITY, drag = o.drag ?? DRAG_COEF;
+    const K = o.diffusivity ?? DEFAULT_DIFFUSIVITY, factor = o.waveFactor ?? DEFAULT_WAVE_FACTOR;
     const coast = o.coast || null;   // contorno fino de costa (opcional)
 
-    if (![startLat, startLon, durationHours, dtHours, K, drag].every(Number.isFinite)) {
+    if (![startLat, startLon, durationHours, dtHours, K, factor].every(Number.isFinite)) {
       throw new SimulationError('Hay un parámetro que no es un número válido.');
     }
     if (!(n >= 1 && n <= MAX_PARTICLES)) throw new SimulationError(`El número de partículas debe estar entre 1 y ${MAX_PARTICLES}.`);
     if (!(K >= 0 && K <= MAX_DIFFUSIVITY)) throw new SimulationError(`La difusión K debe estar entre 0 y ${MAX_DIFFUSIVITY} m²/s.`);
-    if (!(drag >= 0 && drag <= MAX_DRAG)) throw new SimulationError(`El arrastre del viento debe estar entre 0 y ${MAX_DRAG * 100} %.`);
+    if (!(factor >= 0 && factor <= MAX_WAVE_FACTOR)) throw new SimulationError(`El factor de deriva por oleaje debe estar entre 0 y ${MAX_WAVE_FACTOR}.`);
     if (dtHours <= 0 || durationHours <= 0) throw new SimulationError('La duración y el paso de tiempo deben ser positivos.');
 
     const [w0, w1] = field.window;
@@ -130,7 +132,7 @@
     const rng = makeRng(o.seed);
     const lat = new Float64Array(n).fill(startLat), lon = new Float64Array(n).fill(startLon);
     const status = new Int8Array(n).fill(STATUS_OK);
-    const wu = new Float64Array(n).fill(s0.wu[0]), wv = new Float64Array(n).fill(s0.wv[0]);
+    const su = new Float64Array(n).fill(s0.su[0]), sv = new Float64Array(n).fill(s0.sv[0]);
     const dtS = dtHours * 3600, sigma = Math.sqrt(2 * K * dtS);
 
     const frames = { lat: [lat.slice()], lon: [lon.slice()], status: [status.slice()] };
@@ -145,8 +147,8 @@
       }
       const subLat = new Float64Array(m), subLon = new Float64Array(m);
       const dx = new Float64Array(m), dy = new Float64Array(m);
-      for (let q = 0; q < m; q++) dx[q] = drag * wu[idx[q]] * dtS + rng.normal(sigma);
-      for (let q = 0; q < m; q++) dy[q] = drag * wv[idx[q]] * dtS + rng.normal(sigma);
+      for (let q = 0; q < m; q++) dx[q] = factor * su[idx[q]] * dtS + rng.normal(sigma);
+      for (let q = 0; q < m; q++) dy[q] = factor * sv[idx[q]] * dtS + rng.normal(sigma);
       const beached = new Uint8Array(m);
       for (let q = 0; q < m; q++) {
         const p = idx[q], la = lat[p], lo = lon[p];
@@ -167,7 +169,7 @@
         const p = idx[q];
         if (beached[q]) { status[p] = STATUS_LAND; continue; }
         status[p] = smp.status[q];
-        if (smp.status[q] === STATUS_OK) { wu[p] = smp.wu[q]; wv[p] = smp.wv[q]; }
+        if (smp.status[q] === STATUS_OK) { su[p] = smp.su[q]; sv[p] = smp.sv[q]; }
       }
       frames.lat.push(lat.slice()); frames.lon.push(lon.slice()); frames.status.push(status.slice());
     }
@@ -190,12 +192,13 @@
       lat: frames.lat, lon: frames.lon, status: frames.status,
       center, stranded, lost, active, notes,
       origin: { lat: startLat, lon: startLon },
-      params: { diffusivity: K, dragPct: drag * 100, durationHours: hours },
+      params: { diffusivity: K, waveFactor: factor, durationHours: hours },
     };
   }
 
   const api = { simulate, sampleMany, makeRng, SimulationError, STATUS_OK, STATUS_LAND, STATUS_OUT,
-                DRAG_COEF, DEFAULT_DIFFUSIVITY, DEFAULT_PARTICLES, MAX_PARTICLES, MAX_DIFFUSIVITY, MAX_DRAG };
+                DEFAULT_WAVE_FACTOR, DEFAULT_DIFFUSIVITY, DEFAULT_PARTICLES, MAX_PARTICLES, MAX_DIFFUSIVITY,
+                MAX_WAVE_FACTOR };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Motor = api;
 })(typeof window !== 'undefined' ? window : globalThis);
