@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=4">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=6">
+<link rel="stylesheet" href="css/style.css?v=7">
 </head>
 <body>
 
@@ -38,6 +38,10 @@
       <p id="source-line" class="strong-line">—</p>
       <p id="window-line" class="hint">—</p>
       <button type="button" id="btn-reload" class="btn btn-block">Recargar datos</button>
+      <label class="btn btn-block btn-file">Cargar archivo TXT
+        <input type="file" id="in-file" accept=".txt,text/plain">
+      </label>
+      <p class="hint">Sin servidor (abriendo index.html con doble clic), elige aquí el dirmarea.txt de SEMAR.</p>
       <p id="field-notice" class="notice" role="status" hidden></p>
       <ul id="warnings-list" class="warnings-list"></ul>
     </section>
@@ -195,10 +199,11 @@
 
 <script src="vendor/leaflet/leaflet.js?v=4"></script>
 <script src="vendor/p5/p5.min.js?v=4"></script>
-<script src="js/wavefield.js?v=6"></script>
-<script src="js/coast.js?v=4"></script>
+<script src="js/wavefield.js?v=7"></script>
+<script src="js/coast.js?v=6"></script>
+<script src="data/coast.data.js?v=1"></script>
 <script src="js/motor.js?v=7"></script>
 <script src="js/sketch.js?v=8"></script>
-<script src="js/ui.js?v=8"></script>
+<script src="js/ui.js?v=9"></script>
 </body>
 </html>

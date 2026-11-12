@@ -7,6 +7,7 @@
 const DATA_URL = 'data/dirmarea.txt';
 const COAST_URL = 'data/coast.json';
 const COAST_WARN = 'No se pudo cargar el contorno de costa fino; se usa la rejilla de SEMAR (las lagunas y bahías pequeñas contarán como tierra).';
+const FILE_INVITE = 'Para empezar, pulsa «Cargar archivo TXT» y elige el archivo dirmarea.txt de SEMAR desde tu computadora.';
 const MS_H = 3.6e6;
 const pad = (n) => String(n).padStart(2, '0');
 
@@ -310,12 +311,18 @@ $('coord-format').addEventListener('change', (e) => {
 });
 
 /* ===================== Carga de datos ===================== */
-function showDataError(message) {
+function showNoData(message, isError) {
   $('source-badge').textContent = 'Sin datos';
   $('source-line').textContent = 'Sin datos';
   $('window-line').textContent = '—';
-  setNotice(message, true);
-  setStatus('No hay datos para simular.', true);
+  setNotice(message, isError);
+  setStatus('Carga el archivo TXT de SEMAR para poder simular.', false);
+}
+
+/* Error al leer: si ya había un pronóstico cargado se conserva y solo se avisa. */
+function reportLoadError(message) {
+  if (S2.field) setNotice(`${message} Se conserva el pronóstico anterior.`, true);
+  else showNoData(message, true);
 }
 
 function applyField(f, first) {
@@ -356,28 +363,45 @@ function applyField(f, first) {
 async function loadCoastData() {
   if (S2.coast) return;
   try {
-    S2.coast = await CoastData.loadCoast(COAST_URL);
+    // Primero la costa incluida como script (funciona con file://); si falta, se descarga el JSON.
+    S2.coast = CoastData.coastFromGlobal() || await CoastData.loadCoast(COAST_URL);
   } catch (err) {
     S2.coast = null;
     setNotice(COAST_WARN, true);
   }
 }
 
+let lastFile = null;   // último TXT elegido con «Cargar archivo TXT»
+
+/* Con servidor: descarga data/dirmarea.txt. Sin servidor (file://) no se puede usar fetch, así que
+   se invita a elegir el TXT. «Recargar datos» vuelve a leer el último archivo elegido, si lo hay. */
 async function loadData(first) {
-  if (location.protocol === 'file:') {
-    showDataError('Abre la página desde un servidor local (no con doble clic): en la carpeta del proyecto ejecuta «python3 servidor.py» y entra a http://localhost:8000');
-    return;
-  }
   $('btn-reload').disabled = true;
   try {
     await loadCoastData();
-    applyField(await SemarData.loadSemarWaves(DATA_URL), first);
+    if (lastFile) {
+      applyField(await SemarData.readSemarFile(lastFile), !S2.field);
+    } else if (location.protocol === 'file:') {
+      showNoData(`Abriste la página sin servidor. ${FILE_INVITE}`, false);
+    } else {
+      applyField(await SemarData.loadSemarWaves(DATA_URL), first);
+    }
   } catch (err) {
-    showDataError(err.message || 'No se pudieron leer los datos.');
+    const msg = err.message || 'No se pudieron leer los datos.';
+    reportLoadError(lastFile ? msg : `${msg} También puedes elegir el archivo con «Cargar archivo TXT».`);
   } finally {
     $('btn-reload').disabled = false;
   }
 }
 $('btn-reload').addEventListener('click', () => loadData(false));
+
+$('in-file').addEventListener('change', (e) => {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';             // permite volver a elegir el mismo archivo
+  if (!file) return;
+  lastFile = file;
+  setStatus(`Leyendo ${file.name}…`, false);
+  loadData(false);
+});
 
 loadData(true);

@@ -241,7 +241,25 @@
     return field;
   }
 
-  const api = { WaveField, SemarFormatError, parseSemarWaves, loadSemarWaves,
+  /* Lee un dirmarea.txt elegido desde la computadora (input type=file) con FileReader.
+     No usa fetch, así que funciona aunque la página se abra con doble clic (file://). */
+  function readSemarFile(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const field = parseSemarWaves(reader.result);
+          field.sourceName = file.name;
+          field.lastModified = file.lastModified || null;
+          resolve(field);
+        } catch (err) { reject(err); }
+      };
+      reader.onerror = () => reject(new SemarFormatError(`No se pudo leer el archivo ${file.name}.`));
+      reader.readAsText(file);
+    });
+  }
+
+  const api = { WaveField, SemarFormatError, parseSemarWaves, loadSemarWaves, readSemarFile,
                 stokesDrift, wavePeriod, STOKES_COEF, PERIOD_COEF, rint };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.SemarData = api;

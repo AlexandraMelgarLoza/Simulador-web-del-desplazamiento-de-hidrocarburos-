@@ -87,6 +87,9 @@ fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
 .btn-primary { background: var(--teal-dark); color: #fff; }
 .btn-primary:hover { background: #085962; }
 .btn-block { width: 100%; }
+.btn-file { position: relative; margin-top: 8px; }
+.btn-file input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.btn-file:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
 .btn-row { display: flex; gap: 8px; margin: 12px 0 4px; }
 .btn-row .btn { flex: 1; }
 
