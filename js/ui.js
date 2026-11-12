@@ -107,7 +107,7 @@ function updateSpillStats(hour) {
   const sim = S2.sim;
   const set = (id, t) => { $(id).textContent = t; };
   if (!sim) {
-    ['st-hour', 'st-active', 'st-stranded', 'st-lost', 'st-center', 'st-dist'].forEach((id) => set(id, '—'));
+    ['st-hour', 'st-active', 'st-stranded', 'st-lost', 'st-area', 'st-width', 'st-center', 'st-dist'].forEach((id) => set(id, '—'));
     return;
   }
   const k = Math.max(0, Math.min(sim.steps, Math.round((hour - simOffset()) / sim.dtHours)));
@@ -116,6 +116,8 @@ function updateSpillStats(hour) {
   set('st-active', `${sim.active[k]} de ${sim.n}`);
   set('st-stranded', String(sim.stranded[k]));
   set('st-lost', String(sim.lost[k]));
+  set('st-area', `${sim.area[k] < 10 ? sim.area[k].toFixed(2) : sim.area[k].toFixed(0)} km²`);
+  set('st-width', `${sim.width[k].toFixed(1)} km`);
   set('st-center', fmtCoord(c[0], c[1]));
   set('st-dist', `${distKm(sim.origin.lat, sim.origin.lon, c[0], c[1]).toFixed(1)} km`);
 }

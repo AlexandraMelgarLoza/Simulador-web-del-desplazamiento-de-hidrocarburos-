@@ -354,17 +354,6 @@ new p5((p) => {
   }
 
   /* ----- Mancha de hidrocarburos ----- */
-  function hull(pts) {          // envolvente convexa (cadena monótona)
-    if (pts.length < 3) return pts;
-    pts.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-    const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
-    const lo = [], up = [];
-    for (const q of pts) { while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
-    for (let i = pts.length - 1; i >= 0; i--) { const q = pts[i]; while (up.length >= 2 && cross(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
-    lo.pop(); up.pop();
-    return lo.concat(up);
-  }
-
   /* Posición (lat, lon) de cada partícula en el cuadro fraccionario fr, interpolada entre cuadros. */
   function positionsAt(sim, fr, outLat, outLon) {
     const f0 = Math.floor(fr), f1 = Math.min(f0 + 1, sim.steps), a = fr - f0;
@@ -379,6 +368,11 @@ new p5((p) => {
      y luego se pega sobre el mapa con opacidad SLICK_ALPHA, así la mancha nunca pasa de ~25 %
      y deja ver las partículas y el mapa. */
   const SLICK_ALPHA = 0.25;
+  /* Radio que representa cada partícula en el terreno, en METROS. Se convierte a píxeles con la
+     escala del mapa en la latitud de cada partícula (proj.mPerPx), así la mancha tiene tamaño real
+     y crece o se encoge correctamente con el zoom. El mínimo en píxeles es solo para que se vea. */
+  const PARTICLE_RADIUS_M = 1000;
+  const MIN_RADIUS_PX = 1.5;
   const TRAIL_HOURS = 4;        // largo de la estela de cada partícula (horas de simulación)
   const TRAIL_SAMPLES = 8;      // segmentos por estela
   let slickCanvas = null, slickCtx = null;
@@ -407,9 +401,9 @@ new p5((p) => {
     // 1) Mancha (densidad): relleno suave, máximo ~25 % de opacidad, y su contorno bien visible
     if (S.showSlick) {
       const sctx = slickLayer(W, H);
-      const r = Math.max(9, Math.min(32, 8000 / proj.mPerPx(sim.origin.lat)));
       for (let q = 0; q < n; q++) {
         if (stat[q] === Motor.STATUS_OUT) continue;
+        const r = Math.max(MIN_RADIUS_PX, PARTICLE_RADIUS_M / proj.mPerPx(lats[q]));
         sctx.drawImage(spriteOil, xs[q] - r, ys[q] - r, r * 2, r * 2);
       }
       ctx.save();
@@ -417,9 +411,10 @@ new p5((p) => {
       ctx.drawImage(slickCanvas, 0, 0, W, H);
       ctx.restore();
 
+      // Contorno: envolvente de las partículas en el agua (las mismas del área en "Estado de la mancha")
       const pts = [];
-      for (let q = 0; q < n; q++) if (stat[q] !== Motor.STATUS_OUT) pts.push([xs[q], ys[q]]);
-      const hl = hull(pts);
+      for (let q = 0; q < n; q++) if (stat[q] === Motor.STATUS_OK) pts.push([xs[q], ys[q]]);
+      const hl = Motor.convexHull(pts);
       if (hl.length >= 3) {
         ctx.save();
         ctx.beginPath(); hl.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath();

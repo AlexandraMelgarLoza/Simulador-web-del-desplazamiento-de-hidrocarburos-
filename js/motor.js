@@ -86,6 +86,39 @@
     return { status, su, sv };
   }
 
+  /* Envolvente convexa de puntos [x, y] (cadena monótona). Ordena `pts` en su lugar. */
+  function convexHull(pts) {
+    if (pts.length < 3) return pts.slice();
+    pts.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const lo = [], up = [];
+    for (const q of pts) { while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+    for (let i = pts.length - 1; i >= 0; i--) { const q = pts[i]; while (up.length >= 2 && cross(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
+    lo.pop(); up.pop();
+    return lo.concat(up);
+  }
+
+  /* Área (km²) y ancho máximo (km) de la envolvente convexa de las partículas EN EL AGUA
+     (estado 0). Se proyecta a un plano local en km alrededor del centro (equirectangular,
+     suficiente para manchas de decenas de km). Ancho máximo = mayor distancia entre dos vértices. */
+  function slickGeometry(lats, lons, status) {
+    const sel = [];
+    for (let p = 0; p < lats.length; p++) if (status[p] === STATUS_OK) sel.push(p);
+    if (sel.length < 2) return { area: 0, width: 0 };
+    let la0 = 0, lo0 = 0;
+    for (const p of sel) { la0 += lats[p]; lo0 += lons[p]; }
+    la0 /= sel.length; lo0 /= sel.length;
+    const kx = M_PER_DEG / 1000 * Math.cos(la0 * Math.PI / 180), ky = M_PER_DEG / 1000;
+    const h = convexHull(sel.map((p) => [(lons[p] - lo0) * kx, (lats[p] - la0) * ky]));
+    let area = 0, width = 0;
+    for (let i = 0; i < h.length; i++) {
+      const a = h[i], b = h[(i + 1) % h.length];
+      if (h.length >= 3) area += a[0] * b[1] - b[0] * a[1];
+      for (let j = i + 1; j < h.length; j++) width = Math.max(width, Math.hypot(h[j][0] - a[0], h[j][1] - a[1]));
+    }
+    return { area: Math.abs(area) / 2, width };
+  }
+
   const stamp = (ms) => new Date(ms).toISOString().slice(0, 16).replace('T', ' ');
   const g = (x) => String(+x.toFixed(2));   // equivalente a :g
 
@@ -174,9 +207,10 @@
       frames.lat.push(lat.slice()); frames.lon.push(lon.slice()); frames.status.push(status.slice());
     }
 
-    // Resumen por instante: centro de la mancha (promedio de todas las partículas) y conteos
+    // Resumen por instante: centro de la mancha (promedio de todas las partículas), conteos,
+    // y área y ancho de la envolvente de las partículas en el agua
     const nf = frames.lat.length;
-    const center = [], stranded = [], lost = [], active = [];
+    const center = [], stranded = [], lost = [], active = [], area = [], width = [];
     for (let f = 0; f < nf; f++) {
       let sa = 0, so = 0, st = 0, lo = 0, ac = 0;
       for (let p = 0; p < n; p++) {
@@ -185,18 +219,20 @@
         if (s === STATUS_LAND) st++; else if (s === STATUS_OUT) lo++; else ac++;
       }
       center.push([sa / n, so / n]); stranded.push(st); lost.push(lo); active.push(ac);
+      const geo = slickGeometry(frames.lat[f], frames.lon[f], frames.status[f]);
+      area.push(geo.area); width.push(geo.width);
     }
 
     return {
       startMs, dtHours, n, steps: nf - 1,
       lat: frames.lat, lon: frames.lon, status: frames.status,
-      center, stranded, lost, active, notes,
+      center, stranded, lost, active, area, width, notes,
       origin: { lat: startLat, lon: startLon },
       params: { diffusivity: K, waveFactor: factor, durationHours: hours },
     };
   }
 
-  const api = { simulate, sampleMany, makeRng, SimulationError, STATUS_OK, STATUS_LAND, STATUS_OUT,
+  const api = { simulate, sampleMany, makeRng, convexHull, slickGeometry, SimulationError, STATUS_OK, STATUS_LAND, STATUS_OUT,
                 DEFAULT_WAVE_FACTOR, DEFAULT_DIFFUSIVITY, DEFAULT_PARTICLES, MAX_PARTICLES, MAX_DIFFUSIVITY,
                 MAX_WAVE_FACTOR };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
