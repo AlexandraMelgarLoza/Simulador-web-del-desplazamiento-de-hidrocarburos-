@@ -1,18 +1,24 @@
 'use strict';
 /*
- * Motor browniano de dispersión de hidrocarburos con deriva por viento.
+ * Motor browniano de dispersión de hidrocarburos con deriva por oleaje.
  * Port de utils/motor.py; integra la deriva y la difusión con Euler-Maruyama.
  *
  * En cada paso dt:   posición(t + dt) = posición(t) + DERIVA * dt + DIFUSIÓN
  *
- * 1) DERIVA POR VIENTO: el hidrocarburo se mueve en sentido opuesto a la dirección "de donde
- *    viene" indicada por SEMAR, con una fracción de la velocidad (arrastre, 3 %):
- *    v = DRAG_COEF * U. La velocidad se estima de la altura de ola (ver wavefield.js).
+ * 1) DERIVA POR OLEAJE (deriva de Stokes): el hidrocarburo se mueve en la dirección de
+ *    propagación de la ola (opuesta a dirolavto, que indica de dónde viene), con velocidad
+ *    v = factor · Us,  Us = 2π³Hs²/(gT³) con T ≈ 3.86·sqrt(Hs)  →  Us ≈ 0.11·sqrt(Hs) m/s
+ *    (detalle en wavefield.js). El factor (1.0 por defecto) permite calibrar la deriva.
+ *    No se usa el viento.
  * 2) DIFUSIÓN BROWNIANA: paso aleatorio normal por eje, sigma = sqrt(2 K dt)
  *    (relación de Einstein Var(x) = 2 K t). K = 10 m²/s por defecto (valor de NOAA GNOME).
  * 3) No se modela la corriente marina.
- * 4) VARAMIENTO: una partícula que entra a una celda sin dato (tierra) se detiene y queda
- *    "varada". Si sale del dominio del archivo, también se detiene.
+ * 4) VARAMIENTO: con el contorno fino de costa (opts.coast, de coast.data.js / coast.json), una
+ *    partícula cuyo paso termina en tierra, o cuyo punto medio cae en tierra, se detiene en su
+ *    última posición en el agua y queda "varada"; las celdas sin dato que son agua (lagunas,
+ *    bahías) toman el oleaje de la celda con dato más cercana. Sin contorno fino se usa la
+ *    rejilla de SEMAR: entrar a una celda sin dato cuenta como tierra (y la partícula queda dentro
+ *    de esa celda). Si sale del dominio del archivo, también se detiene ("fuera del dominio").
  *
  * Integración de Euler explícita. Metros a grados: dlat = dy / 111320,
  * dlon = dx / (111320 cos(lat)).
@@ -22,12 +28,12 @@
   const { rint } = W;
 
   const STATUS_OK = 0, STATUS_LAND = 1, STATUS_OUT = 2;
-  const DRAG_COEF = 0.03;            // fracción del viento con que se mueve el hidrocarburo
+  const DEFAULT_WAVE_FACTOR = 1.0;   // multiplica la deriva de Stokes estimada
   const DEFAULT_DIFFUSIVITY = 10;    // K, m²/s
-  const DEFAULT_PARTICLES = 200;
+  const DEFAULT_PARTICLES = 300;     // igual que el valor inicial de index.html
   const MAX_PARTICLES = 1000;
   const MAX_DIFFUSIVITY = 1000;
-  const MAX_DRAG = 0.10;
+  const MAX_WAVE_FACTOR = 10;
   const M_PER_DEG = 111320;
 
   class SimulationError extends Error {}
@@ -55,33 +61,66 @@
     };
   }
 
-  /* Estado y viento en varios puntos a la hora tMs (interpolado en el tiempo, celda más cercana
-     en el espacio). Igual que WaveField.sample_many.
+  /* Estado y deriva por oleaje (su, sv en m/s, factor 1) en varios puntos a la hora tMs
+     (interpolada en el tiempo, celda más cercana en el espacio). Igual que WaveField.sample_many.
      Con `coast` (contorno fino): es tierra solo lo que el contorno dice que es tierra, y en las
-     celdas sin dato que son agua (lagunas, bahías) se usa el viento de la celda con dato más cercana. */
+     celdas sin dato que son agua (lagunas, bahías) se usa el oleaje de la celda con dato más cercana. */
   function sampleMany(field, lats, lons, tMs, out, coast) {
     const n = lats.length;
     const status = out ? out.status : new Int8Array(n);
-    const wu = out ? out.wu : new Float64Array(n);
-    const wv = out ? out.wv : new Float64Array(n);
+    const su = out ? out.su : new Float64Array(n);
+    const sv = out ? out.sv : new Float64Array(n);
     const { k0, k1, w } = field.timeWeights((tMs - field.times[0]) / 3.6e6);
-    const a = 1 - w, U0 = field.wu[k0], U1 = field.wu[k1], V0 = field.wv[k0], V1 = field.wv[k1];
+    const a = 1 - w, U0 = field.su[k0], U1 = field.su[k1], V0 = field.sv[k0], V1 = field.sv[k1];
     for (let p = 0; p < n; p++) {
       const i = rint((lats[p] - field.lat0) / field.dlat);
       const j = rint((lons[p] - field.lon0) / field.dlon);
-      if (i < 0 || i >= field.nlat || j < 0 || j >= field.nlon) { status[p] = STATUS_OUT; wu[p] = NaN; wv[p] = NaN; continue; }
+      if (i < 0 || i >= field.nlat || j < 0 || j >= field.nlon) { status[p] = STATUS_OUT; su[p] = NaN; sv[p] = NaN; continue; }
       let c = i * field.nlon + j;
       if (coast) {
-        if (coast.isLand(lats[p], lons[p])) { status[p] = STATUS_LAND; wu[p] = NaN; wv[p] = NaN; continue; }
+        if (coast.isLand(lats[p], lons[p])) { status[p] = STATUS_LAND; su[p] = NaN; sv[p] = NaN; continue; }
         c = field.fillIdx[c];
-        if (c < 0) { status[p] = STATUS_OK; wu[p] = 0; wv[p] = 0; continue; }   // agua sin dato cercano: solo difusión
+        if (c < 0) { status[p] = STATUS_OK; su[p] = 0; sv[p] = 0; continue; }   // agua sin dato cercano: solo difusión
       }
       const u = a * U0[c] + w * U1[c], v = a * V0[c] + w * V1[c];
-      if (coast) { status[p] = STATUS_OK; wu[p] = Number.isNaN(u) ? 0 : u; wv[p] = Number.isNaN(v) ? 0 : v; continue; }
-      wu[p] = u; wv[p] = v;
+      if (coast) { status[p] = STATUS_OK; su[p] = Number.isNaN(u) ? 0 : u; sv[p] = Number.isNaN(v) ? 0 : v; continue; }
+      su[p] = u; sv[p] = v;
       status[p] = (Number.isNaN(u) || Number.isNaN(v)) ? STATUS_LAND : STATUS_OK;
     }
-    return { status, wu, wv };
+    return { status, su, sv };
+  }
+
+  /* Envolvente convexa de puntos [x, y] (cadena monótona). Ordena `pts` en su lugar. */
+  function convexHull(pts) {
+    if (pts.length < 3) return pts.slice();
+    pts.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const lo = [], up = [];
+    for (const q of pts) { while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+    for (let i = pts.length - 1; i >= 0; i--) { const q = pts[i]; while (up.length >= 2 && cross(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
+    lo.pop(); up.pop();
+    return lo.concat(up);
+  }
+
+  /* Área (km²) y ancho máximo (km) de la envolvente convexa de las partículas EN EL AGUA
+     (estado 0). Se proyecta a un plano local en km alrededor del centro (equirectangular,
+     suficiente para manchas de decenas de km). Ancho máximo = mayor distancia entre dos vértices. */
+  function slickGeometry(lats, lons, status) {
+    const sel = [];
+    for (let p = 0; p < lats.length; p++) if (status[p] === STATUS_OK) sel.push(p);
+    if (sel.length < 2) return { area: 0, width: 0 };
+    let la0 = 0, lo0 = 0;
+    for (const p of sel) { la0 += lats[p]; lo0 += lons[p]; }
+    la0 /= sel.length; lo0 /= sel.length;
+    const kx = M_PER_DEG / 1000 * Math.cos(la0 * Math.PI / 180), ky = M_PER_DEG / 1000;
+    const h = convexHull(sel.map((p) => [(lons[p] - lo0) * kx, (lats[p] - la0) * ky]));
+    let area = 0, width = 0;
+    for (let i = 0; i < h.length; i++) {
+      const a = h[i], b = h[(i + 1) % h.length];
+      if (h.length >= 3) area += a[0] * b[1] - b[0] * a[1];
+      for (let j = i + 1; j < h.length; j++) width = Math.max(width, Math.hypot(h[j][0] - a[0], h[j][1] - a[1]));
+    }
+    return { area: Math.abs(area) / 2, width };
   }
 
   const stamp = (ms) => new Date(ms).toISOString().slice(0, 16).replace('T', ' ');
@@ -95,15 +134,15 @@
     const o = opts || {};
     const durationHours = o.durationHours ?? 120, dtHours = o.dtHours ?? 1;
     let n = Math.trunc(o.n ?? DEFAULT_PARTICLES);
-    const K = o.diffusivity ?? DEFAULT_DIFFUSIVITY, drag = o.drag ?? DRAG_COEF;
+    const K = o.diffusivity ?? DEFAULT_DIFFUSIVITY, factor = o.waveFactor ?? DEFAULT_WAVE_FACTOR;
     const coast = o.coast || null;   // contorno fino de costa (opcional)
 
-    if (![startLat, startLon, durationHours, dtHours, K, drag].every(Number.isFinite)) {
+    if (![startLat, startLon, durationHours, dtHours, K, factor].every(Number.isFinite)) {
       throw new SimulationError('Hay un parámetro que no es un número válido.');
     }
     if (!(n >= 1 && n <= MAX_PARTICLES)) throw new SimulationError(`El número de partículas debe estar entre 1 y ${MAX_PARTICLES}.`);
     if (!(K >= 0 && K <= MAX_DIFFUSIVITY)) throw new SimulationError(`La difusión K debe estar entre 0 y ${MAX_DIFFUSIVITY} m²/s.`);
-    if (!(drag >= 0 && drag <= MAX_DRAG)) throw new SimulationError(`El arrastre del viento debe estar entre 0 y ${MAX_DRAG * 100} %.`);
+    if (!(factor >= 0 && factor <= MAX_WAVE_FACTOR)) throw new SimulationError(`El factor de deriva por oleaje debe estar entre 0 y ${MAX_WAVE_FACTOR}.`);
     if (dtHours <= 0 || durationHours <= 0) throw new SimulationError('La duración y el paso de tiempo deben ser positivos.');
 
     const [w0, w1] = field.window;
@@ -130,7 +169,7 @@
     const rng = makeRng(o.seed);
     const lat = new Float64Array(n).fill(startLat), lon = new Float64Array(n).fill(startLon);
     const status = new Int8Array(n).fill(STATUS_OK);
-    const wu = new Float64Array(n).fill(s0.wu[0]), wv = new Float64Array(n).fill(s0.wv[0]);
+    const su = new Float64Array(n).fill(s0.su[0]), sv = new Float64Array(n).fill(s0.sv[0]);
     const dtS = dtHours * 3600, sigma = Math.sqrt(2 * K * dtS);
 
     const frames = { lat: [lat.slice()], lon: [lon.slice()], status: [status.slice()] };
@@ -145,8 +184,8 @@
       }
       const subLat = new Float64Array(m), subLon = new Float64Array(m);
       const dx = new Float64Array(m), dy = new Float64Array(m);
-      for (let q = 0; q < m; q++) dx[q] = drag * wu[idx[q]] * dtS + rng.normal(sigma);
-      for (let q = 0; q < m; q++) dy[q] = drag * wv[idx[q]] * dtS + rng.normal(sigma);
+      for (let q = 0; q < m; q++) dx[q] = factor * su[idx[q]] * dtS + rng.normal(sigma);
+      for (let q = 0; q < m; q++) dy[q] = factor * sv[idx[q]] * dtS + rng.normal(sigma);
       const beached = new Uint8Array(m);
       for (let q = 0; q < m; q++) {
         const p = idx[q], la = lat[p], lo = lon[p];
@@ -167,14 +206,15 @@
         const p = idx[q];
         if (beached[q]) { status[p] = STATUS_LAND; continue; }
         status[p] = smp.status[q];
-        if (smp.status[q] === STATUS_OK) { wu[p] = smp.wu[q]; wv[p] = smp.wv[q]; }
+        if (smp.status[q] === STATUS_OK) { su[p] = smp.su[q]; sv[p] = smp.sv[q]; }
       }
       frames.lat.push(lat.slice()); frames.lon.push(lon.slice()); frames.status.push(status.slice());
     }
 
-    // Resumen por instante: centro de la mancha (promedio de todas las partículas) y conteos
+    // Resumen por instante: centro de la mancha (promedio de todas las partículas), conteos,
+    // y área y ancho de la envolvente de las partículas en el agua
     const nf = frames.lat.length;
-    const center = [], stranded = [], lost = [], active = [];
+    const center = [], stranded = [], lost = [], active = [], area = [], width = [];
     for (let f = 0; f < nf; f++) {
       let sa = 0, so = 0, st = 0, lo = 0, ac = 0;
       for (let p = 0; p < n; p++) {
@@ -183,19 +223,22 @@
         if (s === STATUS_LAND) st++; else if (s === STATUS_OUT) lo++; else ac++;
       }
       center.push([sa / n, so / n]); stranded.push(st); lost.push(lo); active.push(ac);
+      const geo = slickGeometry(frames.lat[f], frames.lon[f], frames.status[f]);
+      area.push(geo.area); width.push(geo.width);
     }
 
     return {
       startMs, dtHours, n, steps: nf - 1,
       lat: frames.lat, lon: frames.lon, status: frames.status,
-      center, stranded, lost, active, notes,
+      center, stranded, lost, active, area, width, notes,
       origin: { lat: startLat, lon: startLon },
-      params: { diffusivity: K, dragPct: drag * 100, durationHours: hours },
+      params: { diffusivity: K, waveFactor: factor, durationHours: hours },
     };
   }
 
-  const api = { simulate, sampleMany, makeRng, SimulationError, STATUS_OK, STATUS_LAND, STATUS_OUT,
-                DRAG_COEF, DEFAULT_DIFFUSIVITY, DEFAULT_PARTICLES, MAX_PARTICLES, MAX_DIFFUSIVITY, MAX_DRAG };
+  const api = { simulate, sampleMany, makeRng, convexHull, slickGeometry, SimulationError, STATUS_OK, STATUS_LAND, STATUS_OUT,
+                DEFAULT_WAVE_FACTOR, DEFAULT_DIFFUSIVITY, DEFAULT_PARTICLES, MAX_PARTICLES, MAX_DIFFUSIVITY,
+                MAX_WAVE_FACTOR };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Motor = api;
 })(typeof window !== 'undefined' ? window : globalThis);

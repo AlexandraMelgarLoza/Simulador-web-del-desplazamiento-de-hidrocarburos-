@@ -5,10 +5,10 @@
  *  - Leaflet pone el mapa base (calles / satélite), el zoom y el arrastre.
  *  - p5.js dibuja encima, en un canvas transparente. Pasa de lat/lon a píxeles con una
  *    proyección Web Mercator propia (makeProjector) que coincide con la de Leaflet.
- *  - Capas, de abajo hacia arriba: oleaje (color) · cuadrícula · viento en movimiento ·
- *    flechas · mancha de hidrocarburos · celda bajo el cursor.
+ *  - Capas, de abajo hacia arriba: oleaje (color) · cuadrícula · oleaje en movimiento ·
+ *    flechas (dirección de propagación de la ola) · mancha de hidrocarburos · celda bajo el cursor.
  *  - El tiempo (App.state.h) son horas desde el primer paso del pronóstico y puede ser
- *    fraccionario: el viento y las partículas se interpolan, así el movimiento es continuo.
+ *    fraccionario: el oleaje y las partículas se interpolan, así el movimiento es continuo.
  */
 
 const $ = (id) => document.getElementById(id);
@@ -17,14 +17,9 @@ const App = {
   state: {
     field: null,
     h: 0,                       // horas desde el inicio del pronóstico (fraccionario)
-<<<<<<< Updated upstream
-    base: 'normal',
-    showHeat: true, showArrows: true, showFlow: true, showGrid: true, showCoast: false,
-=======
     base: 'oscuro',
     showHeat: true, showArrows: true, showFlow: false, showGrid: true, showCoast: false,
     showSlick: true, showParticles: true,
->>>>>>> Stashed changes
     coast: null,                // contorno fino de costa (CoastData.Coast)
     fmt: 'dec',
     hover: null,                // {i, j}
@@ -66,10 +61,6 @@ App.setBase = (name) => {
 
 /* Colores de las capas según el mapa de fondo (legibles en claro y en satélite) */
 const THEME = {
-<<<<<<< Updated upstream
-  normal:   { flow: '14,58,70',   grid: '14,58,70',   gridText: '#0E3A46', halo: 'rgba(255,255,255,0.92)', arrowCore: '#0E3A46', arrowCase: 'rgba(255,255,255,0.85)' },
-  satelite: { flow: '255,255,255', grid: '255,255,255', gridText: '#FFFFFF', halo: 'rgba(0,20,30,0.85)',    arrowCore: '#FFFFFF', arrowCase: 'rgba(5,25,35,0.8)' },
-=======
   oscuro:   { flow: '170,205,240', grid: '170,195,225', gridText: '#B8C7DD', halo: 'rgba(8,14,26,0.85)', arrowCore: '#E8F1FB', arrowCase: 'rgba(6,12,24,0.75)',
               dot: '#FFA23A', dotCase: 'rgba(20,10,0,0.9)', trail: '255,162,58', hull: '#FFB347', hullCase: 'rgba(6,12,24,0.75)',
               hullFill: 'rgba(255,138,31,0.08)', slickAlpha: 0.4, sprite: 'glow', heatAlpha: 170,
@@ -85,7 +76,6 @@ const THEME = {
               hullFill: 'rgba(43,30,21,0.06)', slickAlpha: 0.25, sprite: 'brown', heatAlpha: 150,
               hover: '#FFFFFF', coastCase: 'rgba(255,255,255,0.85)', coastCore: '#B4540A',
               pathCase: 'rgba(255,255,255,0.9)', pathCore: '#0A6B74', crossCase: 'rgba(255,255,255,0.95)', crossCore: '#0A6B74', strandCase: '#FFFFFF' },
->>>>>>> Stashed changes
 };
 
 /* Marcador del punto de derrame: se puede arrastrar. */
@@ -138,7 +128,7 @@ let interp = null, interpKey = null;
 App.getInterp = () => {
   const f = S.field;
   if (!f) return null;
-  if (!interp || interp.wu.length !== f.nlat * f.nlon) { interp = f.makeFrame(); interpKey = null; }
+  if (!interp || interp.su.length !== f.nlat * f.nlon) { interp = f.makeFrame(); interpKey = null; }
   const key = `${S.h.toFixed(4)}|${f.runTime}`;
   if (key !== interpKey) { f.interpolateInto(S.h, interp); interpKey = key; }
   return interp;
@@ -152,12 +142,8 @@ map.getContainer().appendChild(host);
 
 let looping = true;
 
-<<<<<<< Updated upstream
-/* Sprites (círculos difusos) para dibujar la mancha */
-=======
 /* Sprite (círculo difuso) para la capa de densidad de la mancha. Es tenue a propósito: los
    círculos se acumulan y la capa completa se dibuja con opacidad máxima de ~25 % (40 % en el mapa oscuro; ver slickAlpha en THEME). */
->>>>>>> Stashed changes
 function makeSprite(rgb, a0, a1) {
   const c = document.createElement('canvas');
   c.width = c.height = 64;
@@ -169,20 +155,12 @@ function makeSprite(rgb, a0, a1) {
   g.fillStyle = grad; g.fillRect(0, 0, 64, 64);
   return c;
 }
-<<<<<<< Updated upstream
-const spriteOil = makeSprite('36,24,16', 0.42, 0.20);
-const spriteGlow = makeSprite('242,163,58', 0.38, 0.14);
-
-/* Partículas del flujo de viento (las líneas en movimiento) */
-const FLOW_N = 800, TRAIL = 9, FLOW_PX_PER_MS = 9;   // px/s por cada m/s de viento
-=======
 const spriteBrown = makeSprite('43,30,21', 0.40, 0.22);     // para mapas claros y satélite
 const spriteGlow = makeSprite('255,138,31', 0.55, 0.28);    // para el mapa oscuro
 
 /* Partículas del flujo de oleaje (las líneas en movimiento). Solo es visual: la deriva de Stokes
    es de ~0.1 m/s, así que se exagera para que el movimiento se note en pantalla. */
 const FLOW_N = 220, TRAIL = 9, FLOW_PX_PER_MS = 300;   // px/s por cada m/s de deriva
->>>>>>> Stashed changes
 const flow = {
   lat: new Float32Array(FLOW_N), lon: new Float32Array(FLOW_N),
   age: new Float32Array(FLOW_N), life: new Float32Array(FLOW_N),
@@ -294,11 +272,12 @@ new p5((p) => {
       const cy = (ry[i] + ry[i + 1]) / 2;
       if (cy < -20 || cy > H + 20) continue;
       for (let j = Math.floor(step / 2); j < f.nlon; j += step) {
-        const c = i * f.nlon + j, u = fr.wu[c], v = fr.wv[c];
+        const c = i * f.nlon + j, u = fr.su[c], v = fr.sv[c];
         if (Number.isNaN(u)) continue;
         const cx = (rx[j] + rx[j + 1]) / 2;
         if (cx < -20 || cx > W + 20) continue;
-        const speed = Math.hypot(u, v), len = Math.max(9, Math.min(maxLen, 7 + speed * 3));
+        // Dirección: hacia donde se propaga la ola. Largo: proporcional a la altura de ola.
+        const len = Math.max(9, Math.min(maxLen, 8 + fr.hs[c] * 9));
         const ang = Math.atan2(-v, u), ca = Math.cos(ang), sa = Math.sin(ang);
         const x1 = cx - ca * len / 2, y1 = cy - sa * len / 2, x2 = cx + ca * len / 2, y2 = cy + sa * len / 2;
         const head = Math.min(6, len * 0.42);
@@ -315,9 +294,9 @@ new p5((p) => {
     ctx.restore();
   }
 
-  /* Viento en un punto: null si es tierra. Con costa fina, las aguas costeras sin dato
-     (lagunas, bahías) usan el viento de la celda con dato más cercana. */
-  function windAt(f, lat, lon) {
+  /* Deriva por oleaje en un punto (m/s, factor 1): null si es tierra. Con costa fina, las aguas
+     costeras sin dato (lagunas, bahías) usan el oleaje de la celda con dato más cercana. */
+  function driftAt(f, lat, lon) {
     const cell = f.cellAt(lat, lon);
     if (!cell) return null;
     let c = cell.i * f.nlon + cell.j;
@@ -326,17 +305,17 @@ new p5((p) => {
       c = f.fillIdx[c];
       if (c < 0) return null;
     }
-    const u = interp.wu[c], v = interp.wv[c];
+    const u = interp.su[c], v = interp.sv[c];
     return Number.isNaN(u) ? null : [u, v];
   }
 
-  /* ----- Flujo de viento: líneas que se mueven con el viento ----- */
+  /* ----- Flujo de oleaje: líneas que avanzan en la dirección de propagación de la ola ----- */
   function respawn(n, f, b) {
     for (let t = 0; t < 6; t++) {
       const la = b.getSouth() + Math.random() * (b.getNorth() - b.getSouth());
       const lo = b.getWest() + Math.random() * (b.getEast() - b.getWest());
       flow.lat[n] = la; flow.lon[n] = lo;
-      if (windAt(f, la, lo)) break;
+      if (driftAt(f, la, lo)) break;
     }
     flow.age[n] = 0;
     flow.life[n] = 45 + Math.random() * 70;
@@ -352,12 +331,12 @@ new p5((p) => {
     const kDeg = proj.degPerPx, rad = Math.PI / 180;
     for (let n = 0; n < FLOW_N; n++) {
       let lat = flow.lat[n], lon = flow.lon[n];
-      const wind = windAt(f, lat, lon);
+      const drift = driftAt(f, lat, lon);
       const x = proj.x(lon), y = proj.y(lat);
-      if (!wind || flow.age[n] >= flow.life[n] || x < -30 || x > W + 30 || y < -30 || y > H + 30) {
+      if (!drift || flow.age[n] >= flow.life[n] || x < -30 || x > W + 30 || y < -30 || y > H + 30) {
         respawn(n, f, b); continue;
       }
-      const u = wind[0], v = wind[1];
+      const u = drift[0], v = drift[1];
       // desplazamiento en píxeles → grados (en latitud, 1 px = kDeg·cos(lat) grados)
       lon += u * FLOW_PX_PER_MS * dt * kDeg;
       lat += v * FLOW_PX_PER_MS * dt * kDeg * Math.cos(lat * rad);
@@ -412,17 +391,6 @@ new p5((p) => {
   }
 
   /* ----- Mancha de hidrocarburos ----- */
-<<<<<<< Updated upstream
-  function hull(pts) {          // envolvente convexa (cadena monótona)
-    if (pts.length < 3) return pts;
-    pts.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-    const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
-    const lo = [], up = [];
-    for (const q of pts) { while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
-    for (let i = pts.length - 1; i >= 0; i--) { const q = pts[i]; while (up.length >= 2 && cross(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
-    lo.pop(); up.pop();
-    return lo.concat(up);
-=======
   /* Posición (lat, lon) de cada partícula en el cuadro fraccionario fr, interpolada entre cuadros. */
   function positionsAt(sim, fr, outLat, outLon) {
     const f0 = Math.floor(fr), f1 = Math.min(f0 + 1, sim.steps), a = fr - f0;
@@ -451,24 +419,19 @@ new p5((p) => {
     slickCtx.setTransform(d, 0, 0, d, 0, 0);
     slickCtx.clearRect(0, 0, W, H);
     return slickCtx;
->>>>>>> Stashed changes
   }
 
   function drawSpill(ctx, proj, W, H) {
     const sim = S.sim;
     if (!sim) return;
     const th = THEME[S.base];
+    const n = sim.n;
     const fr = Math.max(0, Math.min(sim.steps, (S.h - (sim.startMs - S.field.times[0]) / 3.6e6) / sim.dtHours));
     const f0 = Math.floor(fr), f1 = Math.min(f0 + 1, sim.steps), a = fr - f0;
     const stat = sim.status[a < 0.5 ? f0 : f1];
-    const la0 = sim.lat[f0], la1 = sim.lat[f1], lo0 = sim.lon[f0], lo1 = sim.lon[f1];
-    const n = sim.n;
+    const lats = new Float64Array(n), lons = new Float64Array(n);
+    positionsAt(sim, fr, lats, lons);
     const xs = new Float32Array(n), ys = new Float32Array(n);
-<<<<<<< Updated upstream
-    for (let q = 0; q < n; q++) {
-      xs[q] = proj.x(lo0[q] + (lo1[q] - lo0[q]) * a);
-      ys[q] = proj.y(la0[q] + (la1[q] - la0[q]) * a);
-=======
     for (let q = 0; q < n; q++) { xs[q] = proj.x(lons[q]); ys[q] = proj.y(lats[q]); }
 
     // 1) Mancha (densidad): relleno suave, máximo ~25 % de opacidad, y su contorno bien visible
@@ -497,10 +460,9 @@ new p5((p) => {
         ctx.lineWidth = 2; ctx.strokeStyle = th.hull; ctx.stroke();
         ctx.restore();
       }
->>>>>>> Stashed changes
     }
 
-    // Recorrido del centro, hasta el instante actual
+    // 2) Recorrido del centro, hasta el instante actual
     ctx.save();
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     const path = new Path2D();
@@ -516,17 +478,32 @@ new p5((p) => {
     ctx.setLineDash([7, 6]); ctx.strokeStyle = th.pathCore; ctx.lineWidth = 2.2; ctx.stroke(path);
     ctx.restore();
 
-    // Contorno de la mancha (envolvente de las partículas que siguen en el dominio)
-    const pts = [];
-    for (let q = 0; q < n; q++) if (stat[q] !== Motor.STATUS_OUT) pts.push([xs[q], ys[q]]);
-    const hl = hull(pts);
-    if (hl.length >= 3) {
+    // 3) Partículas y estelas (últimas TRAIL_HOURS horas), encima de la mancha
+    if (S.showParticles) {
+      const frStart = Math.max(0, fr - TRAIL_HOURS / sim.dtHours);
+      if (fr > frStart) {
+        const tx = [], ty = [], tl = new Float64Array(n), to = new Float64Array(n);
+        for (let k = 0; k <= TRAIL_SAMPLES; k++) {          // k = 0: la más vieja; k = TRAIL_SAMPLES: ahora
+          positionsAt(sim, frStart + (fr - frStart) * k / TRAIL_SAMPLES, tl, to);
+          const x = new Float32Array(n), y = new Float32Array(n);
+          for (let q = 0; q < n; q++) { x[q] = proj.x(to[q]); y[q] = proj.y(tl[q]); }
+          tx.push(x); ty.push(y);
+        }
+        ctx.save();
+        ctx.lineCap = 'round'; ctx.lineWidth = 1.6;
+        for (let k = 0; k < TRAIL_SAMPLES; k++) {
+          ctx.strokeStyle = `rgba(${th.trail},${(0.15 + 0.7 * (k + 1) / TRAIL_SAMPLES).toFixed(3)})`;
+          ctx.beginPath();
+          for (let q = 0; q < n; q++) {
+            if (stat[q] === Motor.STATUS_OUT) continue;
+            if (tx[k][q] === tx[k + 1][q] && ty[k][q] === ty[k + 1][q]) continue;
+            ctx.moveTo(tx[k][q], ty[k][q]); ctx.lineTo(tx[k + 1][q], ty[k + 1][q]);
+          }
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
       ctx.save();
-<<<<<<< Updated upstream
-      ctx.beginPath(); hl.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath();
-      ctx.fillStyle = 'rgba(43,30,21,0.10)'; ctx.fill();
-      ctx.setLineDash([3, 4]); ctx.lineWidth = 1.4; ctx.strokeStyle = 'rgba(242,163,58,0.95)'; ctx.stroke();
-=======
       ctx.beginPath();                                       // a la deriva: puntos pequeños y contrastantes
       for (let q = 0; q < n; q++) {
         if (stat[q] !== Motor.STATUS_OK) continue;
@@ -541,42 +518,12 @@ new p5((p) => {
       }
       ctx.fillStyle = '#FF5C5C'; ctx.fill();
       ctx.lineWidth = 1.2; ctx.strokeStyle = th.strandCase; ctx.stroke();
->>>>>>> Stashed changes
       ctx.restore();
     }
 
-    // Mancha: círculos difusos que se acumulan (más partículas juntas = más oscuro)
-    const mpp = proj.mPerPx(sim.origin.lat);
-    const r = Math.max(9, Math.min(32, 8000 / mpp));
+    // 4) Centro de la mancha
     ctx.save();
-<<<<<<< Updated upstream
-    for (let q = 0; q < n; q++) {
-      if (stat[q] === Motor.STATUS_OUT) continue;
-      ctx.drawImage(spriteGlow, xs[q] - r * 1.5, ys[q] - r * 1.5, r * 3, r * 3);
-    }
-    for (let q = 0; q < n; q++) {
-      if (stat[q] === Motor.STATUS_OUT) continue;
-      ctx.drawImage(spriteOil, xs[q] - r, ys[q] - r, r * 2, r * 2);
-    }
-    // Partículas individuales
-    for (let q = 0; q < n; q++) {
-      const s = stat[q];
-      if (s === Motor.STATUS_OUT) continue;
-      ctx.beginPath();
-      if (s === Motor.STATUS_LAND) {
-        ctx.arc(xs[q], ys[q], 3.4, 0, 6.2832);
-        ctx.fillStyle = '#E2553F'; ctx.fill();
-        ctx.lineWidth = 1.2; ctx.strokeStyle = '#fff'; ctx.stroke();
-      } else {
-        ctx.arc(xs[q], ys[q], 1.7, 0, 6.2832);
-        ctx.fillStyle = 'rgba(25,16,10,0.95)'; ctx.fill();
-      }
-    }
-    // Centro de la mancha
-    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,0.95)';
-=======
     ctx.lineWidth = 3; ctx.strokeStyle = th.crossCase;
->>>>>>> Stashed changes
     ctx.beginPath(); ctx.moveTo(cx - 7, cy); ctx.lineTo(cx + 7, cy); ctx.moveTo(cx, cy - 7); ctx.lineTo(cx, cy + 7); ctx.stroke();
     ctx.lineWidth = 1.6; ctx.strokeStyle = th.crossCore; ctx.stroke();
     ctx.restore();

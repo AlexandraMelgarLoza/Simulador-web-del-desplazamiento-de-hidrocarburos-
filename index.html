@@ -7,13 +7,8 @@
 
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=4">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<<<<<<< Updated upstream
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=4">
-=======
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css?v=8">
->>>>>>> Stashed changes
 </head>
 <body>
 
@@ -40,41 +35,6 @@
 <main class="layout">
   <button type="button" id="drawer-backdrop" class="drawer-backdrop" aria-label="Cerrar paneles" hidden></button>
 
-<<<<<<< Updated upstream
-  <!-- Panel izquierdo: datos, derrame y estado de la mancha -->
-  <aside class="panel panel-left" aria-label="Datos y simulación">
-
-    <section class="panel-block">
-      <h2>Datos de SEMAR</h2>
-      <p id="source-line" class="strong-line">—</p>
-      <p id="window-line" class="hint">—</p>
-      <button type="button" id="btn-reload" class="btn btn-block">Recargar datos</button>
-      <p id="field-notice" class="notice" role="status" hidden></p>
-      <ul id="warnings-list" class="warnings-list"></ul>
-    </section>
-
-    <section class="panel-block">
-      <h2>Derrame</h2>
-      <div class="field-row">
-        <label class="field">Latitud (°N)
-          <input type="number" id="in-lat" step="any" value="20.50">
-        </label>
-        <label class="field">Longitud (°)
-          <input type="number" id="in-lon" step="any" value="-94.00">
-        </label>
-      </div>
-      <p class="hint">Haz clic en el mapa, arrastra el marcador o escribe las coordenadas. La longitud negativa es oeste.</p>
-      <label class="field">Inicio del derrame
-        <input type="datetime-local" id="in-start" step="3600">
-      </label>
-      <div class="field-row">
-        <label class="field">Duración (h)
-          <input type="number" id="in-duration" min="1" max="1000" step="1" value="120">
-        </label>
-        <label class="field">Partículas
-          <input type="number" id="in-particles" min="1" max="1000" step="50" value="300">
-        </label>
-=======
   <aside class="panel panel-left" id="panel-settings" aria-label="Parámetros de simulación">
     <div class="panel-heading">
       <div>
@@ -92,7 +52,6 @@
         <button type="button" id="btn-reload" class="btn">Recargar datos</button>
         <p id="field-notice" class="notice" role="status" hidden></p>
         <ul id="warnings-list" class="warnings-list"></ul>
->>>>>>> Stashed changes
       </div>
     </details>
 
@@ -103,42 +62,14 @@
           <label class="field">Latitud (°)
             <input type="number" id="in-lat" min="-90" max="90" step="any" value="19.15" required>
           </label>
-<<<<<<< Updated upstream
-          <label class="field">Arrastre del viento (%)
-            <input type="number" id="in-drag" min="0" max="10" step="any" value="3">
-          </label>
-        </div>
-        <label class="field">Semilla (opcional, para repetir una simulación)
-          <input type="number" id="in-seed" step="1" placeholder="aleatoria">
-        </label>
-        <p class="hint">K controla la difusión browniana. La deriva sigue el viento inferido de las olas de SEMAR; no se modela la corriente marina.</p>
-      </details>
-      <div class="btn-row">
-        <button type="button" id="btn-simulate" class="btn btn-primary">Simular</button>
-        <button type="button" id="btn-clear" class="btn">Borrar</button>
-=======
           <label class="field">Longitud (°)
             <input type="number" id="in-lon" min="-180" max="180" step="any" value="-92.30" required>
           </label>
         </div>
         <p class="hint">Haz clic en el mapa, arrastra el marcador o escribe las coordenadas.</p>
->>>>>>> Stashed changes
       </div>
     </details>
 
-<<<<<<< Updated upstream
-    <section class="panel-block">
-      <h2>Estado de la mancha</h2>
-      <dl class="stat-list">
-        <dt>Hora</dt><dd id="st-hour">—</dd>
-        <dt>A la deriva</dt><dd id="st-active">—</dd>
-        <dt>Varadas en costa</dt><dd id="st-stranded">—</dd>
-        <dt>Fuera del dominio</dt><dd id="st-lost">—</dd>
-        <dt>Centro</dt><dd id="st-center">—</dd>
-        <dt>Distancia al origen</dt><dd id="st-dist">—</dd>
-      </dl>
-    </section>
-=======
     <details class="sect" open>
       <summary><span class="sect-label"><span class="sect-icon" aria-hidden="true">◷</span>Tiempo</span></summary>
       <div class="sect-body">
@@ -214,7 +145,6 @@
       <p id="status-text" class="status-text" role="status" aria-live="polite">Cargando…</p>
       <div id="simulation-progress" class="simulation-progress" role="progressbar" aria-label="Simulación en proceso" hidden><span></span></div>
     </div>
->>>>>>> Stashed changes
   </aside>
 
   <!-- Mapa: Leaflet (calles / satélite) + capa de p5.js encima -->
@@ -275,14 +205,11 @@
     <section class="panel-block">
       <fieldset>
         <legend>Capas</legend>
+        <label class="choice"><input type="checkbox" id="chk-slick" checked> Mancha (densidad)</label>
+        <label class="choice"><input type="checkbox" id="chk-particles" checked> Partículas y estelas</label>
         <label class="choice"><input type="checkbox" id="chk-heat" checked> Altura del oleaje (color)</label>
-<<<<<<< Updated upstream
-        <label class="choice"><input type="checkbox" id="chk-arrows" checked> Viento (flechas)</label>
-        <label class="choice"><input type="checkbox" id="chk-flow" checked> Viento en movimiento</label>
-=======
         <label class="choice"><input type="checkbox" id="chk-arrows" checked> Dirección del oleaje</label>
         <label class="choice"><input type="checkbox" id="chk-flow"> Flujo animado</label>
->>>>>>> Stashed changes
         <label class="choice"><input type="checkbox" id="chk-grid" checked> Cuadrícula de coordenadas</label>
         <label class="choice"><input type="checkbox" id="chk-coast"> Línea de costa del modelo</label>
       </fieldset>
@@ -295,8 +222,10 @@
         <dd id="coord-cursor">—</dd>
         <dt>Altura del oleaje</dt>
         <dd id="val-hs">—</dd>
-        <dt>Viento</dt>
-        <dd id="val-wind">—</dd>
+        <dt>Dirección de la ola</dt>
+        <dd id="val-dir">—</dd>
+        <dt>Deriva estimada</dt>
+        <dd id="val-drift">—</dd>
       </dl>
       <label class="field">Formato de coordenadas
         <select id="coord-format">
@@ -307,22 +236,6 @@
     </section>
 
     <section class="panel-block">
-<<<<<<< Updated upstream
-      <h2>Leyenda</h2>
-      <div id="legend-bar" class="legend-bar" aria-hidden="true"></div>
-      <div class="legend-scale"><span>0 m</span><span>1</span><span>2</span><span>3 m</span></div>
-      <ul class="legend">
-        <li><span class="dot dot-oil"></span>Hidrocarburo a la deriva</li>
-        <li><span class="dot dot-stranded"></span>Varado en costa</li>
-        <li><span class="dot dot-origin"></span>Punto de derrame</li>
-        <li><span class="dash"></span>Recorrido del centro</li>
-      </ul>
-      <p class="hint">Color: altura del oleaje de viento. Flechas y líneas en movimiento: hacia dónde sopla el viento estimado.</p>
-    </section>
-
-    <section class="panel-block">
-=======
->>>>>>> Stashed changes
       <h2>Impacto en el ecosistema</h2>
       <ul class="eco-list">
         <li><strong>Aves y mamíferos marinos</strong> — daño al plumaje y al pelaje, y a su regulación térmica.</li>
@@ -337,19 +250,11 @@
 
 <script src="vendor/leaflet/leaflet.js?v=4"></script>
 <script src="vendor/p5/p5.min.js?v=4"></script>
-<<<<<<< Updated upstream
-<script src="js/wavefield.js?v=5"></script>
-<script src="js/coast.js?v=4"></script>
-<script src="js/motor.js?v=5"></script>
-<script src="js/sketch.js?v=4"></script>
-<script src="js/ui.js?v=4"></script>
-=======
-<script src="js/wavefield.js?v=7"></script>
-<script src="js/coast.js?v=6"></script>
-<script src="data/coast.data.js?v=1"></script>
-<script src="js/motor.js?v=8"></script>
+<script src="js/wavefield.js?v=8"></script>
+<script src="js/coast.js?v=7"></script>
+<script src="data/coast.data.js?v=2"></script>
+<script src="js/motor.js?v=9"></script>
 <script src="js/sketch.js?v=9"></script>
-<script src="js/ui.js?v=11"></script>
->>>>>>> Stashed changes
+<script src="js/ui.js?v=12"></script>
 </body>
 </html>

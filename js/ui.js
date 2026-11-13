@@ -176,12 +176,8 @@ function updateSpillStats(hour) {
   const set = (id, t) => { $(id).textContent = t; };
   if (chartsFor !== sim) rebuildCharts(sim);
   if (!sim) {
-<<<<<<< Updated upstream
-    ['st-hour', 'st-active', 'st-stranded', 'st-lost', 'st-center', 'st-dist'].forEach((id) => set(id, '—'));
-=======
     ['st-hour', 'st-active', 'st-stranded', 'st-lost', 'st-area', 'st-width', 'st-center', 'st-dist', 'st-first'].forEach((id) => set(id, '—'));
     ['summary-dist', 'summary-stranded', 'summary-arrival'].forEach((id) => set(id, '—'));
->>>>>>> Stashed changes
     return;
   }
   const k = Math.max(0, Math.min(sim.steps, Math.round((hour - simOffset()) / sim.dtHours)));
@@ -192,6 +188,8 @@ function updateSpillStats(hour) {
   set('st-active', `${sim.active[k]} de ${sim.n}`);
   set('st-stranded', String(sim.stranded[k]));
   set('st-lost', String(sim.lost[k]));
+  set('st-area', `${sim.area[k] < 10 ? sim.area[k].toFixed(2) : sim.area[k].toFixed(0)} km²`);
+  set('st-width', `${sim.width[k].toFixed(1)} km`);
   set('st-center', fmtCoord(c[0], c[1]));
   const distance = distKm(sim.origin.lat, sim.origin.lon, c[0], c[1]);
   set('st-dist', `${distance.toFixed(1)} km`);
@@ -314,9 +312,6 @@ App.originMarker.on('dragend', () => {
   setOrigin(Number(latInput.value), Number(lonInput.value));
   clearSim('Coordenadas actualizadas. Pulsa «Simular».');
 }));
-<<<<<<< Updated upstream
-setOrigin(19.15, -92.30);
-=======
 
 function applySharedSettings() {
   const params = new URLSearchParams(location.search);
@@ -334,7 +329,6 @@ function applySharedSettings() {
 applySharedSettings();
 // Punto inicial: el que trae index.html en los campos de latitud y longitud (una sola fuente).
 setOrigin(parseFloat($('in-lat').value), parseFloat($('in-lon').value));
->>>>>>> Stashed changes
 
 /* ===================== Simulación ===================== */
 function numberOf(id, fallback) {
@@ -375,22 +369,8 @@ async function runSimulation() {
   button.setAttribute('aria-busy', 'true');
   progress.hidden = false;
   setStatus('Calculando la trayectoria de las partículas…', false);
-  await new Promise((resolve) => requestAnimationFrame(resolve));
+  await new Promise((resolve) => window.setTimeout(resolve, 0));
   try {
-<<<<<<< Updated upstream
-    sim = Motor.simulate(f, numberOf('in-lat', NaN), numberOf('in-lon', NaN), startMs, {
-      durationHours: numberOf('in-duration', 120),
-      n: numberOf('in-particles', Motor.DEFAULT_PARTICLES),
-      diffusivity: numberOf('in-k', Motor.DEFAULT_DIFFUSIVITY),
-      drag: numberOf('in-drag', Motor.DRAG_COEF * 100) / 100,
-      seed: seedRaw === '' ? null : Number(seedRaw),
-      coast: S2.coast,
-    });
-  } catch (err) {
-    if (err instanceof Motor.SimulationError) { setStatus(err.message, true); return; }
-    throw err;
-  }
-=======
     let sim;
     try {
       sim = Motor.simulate(f, numberOf('in-lat', NaN), numberOf('in-lon', NaN), startMs, {
@@ -405,7 +385,6 @@ async function runSimulation() {
       if (err instanceof Motor.SimulationError) { setStatus(err.message, true); return; }
       throw err;
     }
->>>>>>> Stashed changes
 
     pause();
     S2.sim = sim;
@@ -432,6 +411,14 @@ $('btn-clear').addEventListener('click', () => clearSim('Simulación borrada. Co
 
 /* ===================== Lectura bajo el cursor ===================== */
 let lastLatLng = null;
+/* Dirección de propagación de la ola y velocidad de deriva (con el factor elegido) a partir de su, sv. */
+function showWave(u, v, suffix) {
+  const to = (Math.atan2(u, v) * 180 / Math.PI + 360) % 360;              // hacia dónde va la ola
+  const factor = numberOf('in-wave-factor', Motor.DEFAULT_WAVE_FACTOR);
+  const sp = Math.hypot(u, v) * (Number.isFinite(factor) ? factor : Motor.DEFAULT_WAVE_FACTOR);
+  $('val-dir').textContent = `hacia ${compass(to)} (${Math.round(to)}°) · viene del ${compass(to + 180)}${suffix}`;
+  $('val-drift').textContent = `${sp.toFixed(2)} m/s (${(sp * 3.6).toFixed(2)} km/h)${suffix}`;
+}
 function updateHover(latlng) {
   const f = S2.field;
   const ll = latlng ? latlng.wrap() : null;
@@ -440,26 +427,24 @@ function updateHover(latlng) {
   S2.hover = cell;
   if (!cell) {
     $('val-hs').textContent = ll && f ? 'Fuera del dominio de datos' : '—';
-    $('val-wind').textContent = '—';
+    $('val-dir').textContent = '—';
+    $('val-drift').textContent = '—';
   } else {
     const fr = App.getInterp(), c = f.index(cell.i, cell.j);
     if (Number.isNaN(fr.hs[c])) {
       const c2 = f.fillIdx[c];
-      if (S2.coast && !S2.coast.isLand(ll.lat, ll.lng) && c2 >= 0 && !Number.isNaN(fr.wu[c2])) {
+      if (S2.coast && !S2.coast.isLand(ll.lat, ll.lng) && c2 >= 0 && !Number.isNaN(fr.su[c2])) {
         // agua costera (laguna, bahía) sin dato en la rejilla: se usa la celda más cercana
-        const u = fr.wu[c2], v = fr.wv[c2];
-        const from = (Math.atan2(-u, -v) * 180 / Math.PI + 360) % 360;
-        $('val-hs').textContent = 'Agua costera (sin dato de oleaje)';
-        $('val-wind').textContent = `≈ ${Math.hypot(u, v).toFixed(1)} m/s · de ${compass(from)} (celda cercana)`;
+        $('val-hs').textContent = `≈ ${fr.hs[c2].toFixed(2)} m (agua costera, celda cercana)`;
+        showWave(fr.su[c2], fr.sv[c2], ' (celda cercana)');
       } else {
         $('val-hs').textContent = S2.coast ? 'Tierra' : 'Tierra (sin dato)';
-        $('val-wind').textContent = '—';
+        $('val-dir').textContent = '—';
+        $('val-drift').textContent = '—';
       }
     } else {
-      const u = fr.wu[c], v = fr.wv[c];
-      const from = (Math.atan2(-u, -v) * 180 / Math.PI + 360) % 360;       // de dónde viene el viento
       $('val-hs').textContent = `${fr.hs[c].toFixed(2)} m`;
-      $('val-wind').textContent = `${Math.hypot(u, v).toFixed(1)} m/s · de ${compass(from)} (${Math.round(from)}°)`;
+      showWave(fr.su[c], fr.sv[c], '');
     }
   }
   App.redraw();
@@ -475,7 +460,10 @@ $('chk-heat').addEventListener('change', (e) => { S2.showHeat = e.target.checked
 $('chk-arrows').addEventListener('change', (e) => { S2.showArrows = e.target.checked; App.redraw(); });
 $('chk-coast').addEventListener('change', (e) => { S2.showCoast = e.target.checked; App.redraw(); });
 $('chk-grid').addEventListener('change', (e) => { S2.showGrid = e.target.checked; App.redraw(); });
+$('chk-slick').addEventListener('change', (e) => { S2.showSlick = e.target.checked; App.redraw(); });
+$('chk-particles').addEventListener('change', (e) => { S2.showParticles = e.target.checked; App.redraw(); });
 $('chk-flow').addEventListener('change', (e) => { S2.showFlow = e.target.checked; App.refreshLoop(); });
+$('in-wave-factor').addEventListener('input', () => updateHover(lastLatLng));
 $('coord-format').addEventListener('change', (e) => {
   S2.fmt = e.target.value;
   updateHover(lastLatLng);
@@ -484,12 +472,18 @@ $('coord-format').addEventListener('change', (e) => {
 });
 
 /* ===================== Carga de datos ===================== */
-function showDataError(message) {
+function showNoData(message, isError) {
   $('source-badge').textContent = 'Sin datos';
   $('source-line').textContent = 'Sin datos';
   $('window-line').textContent = '—';
-  setNotice(message, true);
-  setStatus('No hay datos para simular.', true);
+  setNotice(message, isError);
+  setStatus('Carga el archivo TXT de SEMAR para poder simular.', false);
+}
+
+/* Error al leer: si ya había un pronóstico cargado se conserva y solo se avisa. */
+function reportLoadError(message) {
+  if (S2.field) setNotice(`${message} Se conserva el pronóstico anterior.`, true);
+  else showNoData(message, true);
 }
 
 function applyField(f, first) {
@@ -531,30 +525,19 @@ function applyField(f, first) {
 async function loadCoastData() {
   if (S2.coast) return;
   try {
-    S2.coast = await CoastData.loadCoast(COAST_URL);
+    // Primero la costa incluida como script (funciona con file://); si falta, se descarga el JSON.
+    S2.coast = CoastData.coastFromGlobal() || await CoastData.loadCoast(COAST_URL);
   } catch (err) {
     S2.coast = null;
     setNotice(COAST_WARN, true);
   }
 }
 
-<<<<<<< Updated upstream
-=======
 /* La lectura automática requiere servidor porque fetch no funciona sobre file://. */
->>>>>>> Stashed changes
 async function loadData(first) {
-  if (location.protocol === 'file:') {
-    showDataError('Abre la página desde un servidor local (no con doble clic): en la carpeta del proyecto ejecuta «python3 servidor.py» y entra a http://localhost:8000');
-    return;
-  }
   $('btn-reload').disabled = true;
   try {
     await loadCoastData();
-<<<<<<< Updated upstream
-    applyField(await SemarData.loadSemarWaves(DATA_URL), first);
-  } catch (err) {
-    showDataError(err.message || 'No se pudieron leer los datos.');
-=======
     if (location.protocol === 'file:') {
       showNoData('Abre el simulador mediante el servidor local para cargar automáticamente el pronóstico de SEMAR.', false);
     } else {
@@ -563,7 +546,6 @@ async function loadData(first) {
   } catch (err) {
     const msg = err.message || 'No se pudieron leer los datos.';
     reportLoadError(msg);
->>>>>>> Stashed changes
   } finally {
     $('btn-reload').disabled = false;
   }

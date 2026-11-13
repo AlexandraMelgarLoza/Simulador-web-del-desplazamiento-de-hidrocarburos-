@@ -51,7 +51,13 @@
     return new Coast(await res.json());
   }
 
-  const api = { Coast, loadCoast };
+  /* Costa incluida como script (data/coast.data.js define window.COAST_DATA): carga sin fetch,
+     también con file://. Devuelve null si el script no se cargó. */
+  function coastFromGlobal() {
+    return root.COAST_DATA ? new Coast(root.COAST_DATA) : null;
+  }
+
+  const api = { Coast, loadCoast, coastFromGlobal };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.CoastData = api;
 })(typeof window !== 'undefined' ? window : globalThis);
