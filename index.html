@@ -7,8 +7,13 @@
 
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=4">
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<<<<<<< Updated upstream
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css?v=4">
+=======
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css?v=8">
+>>>>>>> Stashed changes
 </head>
 <body>
 
@@ -26,10 +31,16 @@
     </div>
   </div>
   <p id="source-badge" class="source-badge">Leyendo datos…</p>
+  <nav class="mobile-panel-controls" aria-label="Paneles">
+    <button type="button" class="btn-icon" id="btn-open-settings" aria-controls="panel-settings" aria-expanded="false">Parámetros</button>
+    <button type="button" class="btn-icon" id="btn-open-layers" aria-controls="panel-layers" aria-expanded="false">Capas</button>
+  </nav>
 </header>
 
 <main class="layout">
+  <button type="button" id="drawer-backdrop" class="drawer-backdrop" aria-label="Cerrar paneles" hidden></button>
 
+<<<<<<< Updated upstream
   <!-- Panel izquierdo: datos, derrame y estado de la mancha -->
   <aside class="panel panel-left" aria-label="Datos y simulación">
 
@@ -63,13 +74,36 @@
         <label class="field">Partículas
           <input type="number" id="in-particles" min="1" max="1000" step="50" value="300">
         </label>
+=======
+  <aside class="panel panel-left" id="panel-settings" aria-label="Parámetros de simulación">
+    <div class="panel-heading">
+      <div>
+        <p class="eyebrow">SIMULADOR</p>
+        <h2>Configuración</h2>
       </div>
-      <details class="advanced">
-        <summary>Parámetros del modelo browniano</summary>
+      <button type="button" class="btn-icon drawer-close" data-close-panel aria-label="Cerrar parámetros">×</button>
+    </div>
+
+    <details class="sect data-section" open>
+      <summary><span class="sect-label"><span class="sect-icon" aria-hidden="true">▤</span>Datos de SEMAR</span></summary>
+      <div class="sect-body">
+        <p id="source-line" class="strong-line">—</p>
+        <p id="window-line" class="hint">—</p>
+        <button type="button" id="btn-reload" class="btn">Recargar datos</button>
+        <p id="field-notice" class="notice" role="status" hidden></p>
+        <ul id="warnings-list" class="warnings-list"></ul>
+>>>>>>> Stashed changes
+      </div>
+    </details>
+
+    <details class="sect" open>
+      <summary><span class="sect-label"><span class="sect-icon" aria-hidden="true">⌖</span>Ubicación</span></summary>
+      <div class="sect-body">
         <div class="field-row">
-          <label class="field">Difusión K (m²/s)
-            <input type="number" id="in-k" min="0" max="1000" step="any" value="10">
+          <label class="field">Latitud (°)
+            <input type="number" id="in-lat" min="-90" max="90" step="any" value="19.15" required>
           </label>
+<<<<<<< Updated upstream
           <label class="field">Arrastre del viento (%)
             <input type="number" id="in-drag" min="0" max="10" step="any" value="3">
           </label>
@@ -82,10 +116,17 @@
       <div class="btn-row">
         <button type="button" id="btn-simulate" class="btn btn-primary">Simular</button>
         <button type="button" id="btn-clear" class="btn">Borrar</button>
+=======
+          <label class="field">Longitud (°)
+            <input type="number" id="in-lon" min="-180" max="180" step="any" value="-92.30" required>
+          </label>
+        </div>
+        <p class="hint">Haz clic en el mapa, arrastra el marcador o escribe las coordenadas.</p>
+>>>>>>> Stashed changes
       </div>
-      <p id="status-text" class="status-text" role="status">Cargando…</p>
-    </section>
+    </details>
 
+<<<<<<< Updated upstream
     <section class="panel-block">
       <h2>Estado de la mancha</h2>
       <dl class="stat-list">
@@ -97,15 +138,108 @@
         <dt>Distancia al origen</dt><dd id="st-dist">—</dd>
       </dl>
     </section>
+=======
+    <details class="sect" open>
+      <summary><span class="sect-label"><span class="sect-icon" aria-hidden="true">◷</span>Tiempo</span></summary>
+      <div class="sect-body">
+        <label class="field">Inicio del derrame
+          <input type="datetime-local" id="in-start" step="3600">
+        </label>
+        <div class="field-row">
+          <label class="field">Duración (h)
+            <input type="number" id="in-duration" min="1" max="1000" step="1" value="120" required>
+          </label>
+          <label class="field">Partículas
+            <input type="number" id="in-particles" min="1" max="1000" step="1" value="300" required>
+          </label>
+        </div>
+      </div>
+    </details>
+
+    <details class="sect">
+      <summary><span class="sect-label"><span class="sect-icon" aria-hidden="true">⚙</span>Modelo browniano</span></summary>
+      <div class="sect-body">
+        <div class="field-row">
+          <label class="field">Difusión K (m²/s)
+            <input type="number" id="in-k" min="0" max="1000" step="any" value="10" required>
+          </label>
+          <label class="field">Factor de deriva
+            <button type="button" class="field-help" aria-label="Ayuda sobre el factor de deriva">ⓘ<span class="tooltip" role="tooltip">Multiplica la deriva de Stokes en la dirección de propagación de la ola. No se modelan el viento ni la corriente marina.</span></button>
+            <input type="number" id="in-wave-factor" min="0" max="10" step="any" value="1" required>
+          </label>
+        </div>
+        <label class="field">Semilla <span class="optional">opcional</span>
+          <button type="button" class="field-help" aria-label="Ayuda sobre la semilla">ⓘ<span class="tooltip" role="tooltip">Usa el mismo entero para repetir la simulación. Se aceptan valores negativos; vacío genera una semilla aleatoria.</span></button>
+          <input type="number" id="in-seed" step="1" placeholder="Aleatoria">
+        </label>
+        <p class="hint">K controla la dispersión aleatoria de las partículas.</p>
+      </div>
+    </details>
+
+    <details class="sect" id="results-section">
+      <summary><span class="sect-label"><span class="sect-icon" aria-hidden="true">▥</span>Resultados</span></summary>
+      <div class="sect-body">
+        <div class="kpi-grid">
+          <article class="kpi"><span class="kpi-label">Distancia al origen</span><strong id="summary-dist" class="kpi-val">—</strong></article>
+          <article class="kpi"><span class="kpi-label">Varadas en costa</span><strong id="summary-stranded" class="kpi-val">—</strong></article>
+          <article class="kpi kpi-wide"><span class="kpi-label">Primer varamiento</span><strong id="summary-arrival" class="kpi-val">—</strong></article>
+        </div>
+        <div class="chart-card">
+          <div class="chart-head"><span>Área de la mancha</span><span id="ch-area-max" class="chart-max">—</span></div>
+          <svg id="chart-area" class="chart" viewBox="0 0 300 68" role="img" aria-label="Área de la mancha a través del tiempo"></svg>
+        </div>
+        <div class="chart-card">
+          <div class="chart-head"><span>Partículas varadas</span><span id="ch-str-max" class="chart-max">—</span></div>
+          <svg id="chart-stranded" class="chart" viewBox="0 0 300 68" role="img" aria-label="Partículas varadas a través del tiempo"></svg>
+        </div>
+        <dl class="stat-list">
+          <dt>Hora simulada</dt><dd id="st-hour">—</dd>
+          <dt>A la deriva</dt><dd id="st-active">—</dd>
+          <dt>Varadas</dt><dd id="st-stranded">—</dd>
+          <dt>Fuera del dominio</dt><dd id="st-lost">—</dd>
+          <dt>Área aprox.</dt><dd id="st-area" title="Envolvente convexa de las partículas en el agua">—</dd>
+          <dt>Ancho máximo</dt><dd id="st-width" title="Mayor distancia entre dos partículas de la envolvente">—</dd>
+          <dt>Centro</dt><dd id="st-center">—</dd>
+          <dt>Distancia</dt><dd id="st-dist">—</dd>
+          <dt>Primer varamiento</dt><dd id="st-first">—</dd>
+        </dl>
+      </div>
+    </details>
+
+    <div class="panel-foot">
+      <div class="actions">
+        <button type="button" id="btn-simulate" class="btn btn-primary btn-lg">▶ Simular</button>
+        <button type="button" id="btn-clear" class="btn btn-ghost">Borrar</button>
+      </div>
+      <p id="status-text" class="status-text" role="status" aria-live="polite">Cargando…</p>
+      <div id="simulation-progress" class="simulation-progress" role="progressbar" aria-label="Simulación en proceso" hidden><span></span></div>
+    </div>
+>>>>>>> Stashed changes
   </aside>
 
   <!-- Mapa: Leaflet (calles / satélite) + capa de p5.js encima -->
   <section class="map-wrap" aria-label="Mapa">
     <div id="map"></div>
+    <details class="map-legend" open>
+      <summary>Leyenda <span aria-hidden="true">⌄</span></summary>
+      <div class="map-legend-body">
+        <div id="legend-bar" class="legend-bar" aria-hidden="true"></div>
+        <div class="legend-scale"><span>0 m</span><span>1</span><span>2</span><span>3 m</span></div>
+        <ul class="legend">
+          <li><span class="swatch-slick"></span>Mancha (densidad)</li>
+          <li><span class="dot dot-oil"></span>Partículas y estelas</li>
+          <li><span class="dot dot-stranded"></span>Varada en costa</li>
+          <li><span class="dot dot-origin"></span>Punto de derrame</li>
+          <li><span class="dash"></span>Recorrido del centro</li>
+        </ul>
+        <p class="hint">Color: altura de ola. Flechas y flujo: dirección de propagación.</p>
+      </div>
+    </details>
 
     <div class="timebar" role="group" aria-label="Control del tiempo">
       <button type="button" id="btn-play" class="btn-icon btn-play" aria-label="Reproducir">▶</button>
-      <input type="range" id="timeline" min="0" max="0" value="0" step="1" aria-label="Hora de la simulación">
+      <input type="range" id="timeline" min="0" max="0" value="0" step="1" list="timeline-ticks" aria-label="Hora de la simulación">
+      <datalist id="timeline-ticks"></datalist>
       <div class="timebar-label">
         <span id="tl-main">—</span>
         <small id="tl-sub"></small>
@@ -120,13 +254,20 @@
     </div>
   </section>
 
-  <!-- Panel derecho: vista del mapa -->
-  <aside class="panel panel-right" aria-label="Vista del mapa">
+  <aside class="panel panel-right" id="panel-layers" aria-label="Capas e inspección del mapa">
+    <div class="panel-heading">
+      <div>
+        <p class="eyebrow">EXPLORAR</p>
+        <h2>Mapa y datos</h2>
+      </div>
+      <button type="button" class="btn-icon drawer-close" data-close-panel aria-label="Cerrar capas">×</button>
+    </div>
 
     <section class="panel-block">
       <fieldset>
         <legend>Mapa base</legend>
-        <label class="choice"><input type="radio" name="base" value="normal" checked> Mapa normal</label>
+        <label class="choice"><input type="radio" name="base" value="oscuro" checked> Oscuro</label>
+        <label class="choice"><input type="radio" name="base" value="normal"> Mapa normal</label>
         <label class="choice"><input type="radio" name="base" value="satelite"> Satélite</label>
       </fieldset>
     </section>
@@ -135,14 +276,19 @@
       <fieldset>
         <legend>Capas</legend>
         <label class="choice"><input type="checkbox" id="chk-heat" checked> Altura del oleaje (color)</label>
+<<<<<<< Updated upstream
         <label class="choice"><input type="checkbox" id="chk-arrows" checked> Viento (flechas)</label>
         <label class="choice"><input type="checkbox" id="chk-flow" checked> Viento en movimiento</label>
+=======
+        <label class="choice"><input type="checkbox" id="chk-arrows" checked> Dirección del oleaje</label>
+        <label class="choice"><input type="checkbox" id="chk-flow"> Flujo animado</label>
+>>>>>>> Stashed changes
         <label class="choice"><input type="checkbox" id="chk-grid" checked> Cuadrícula de coordenadas</label>
         <label class="choice"><input type="checkbox" id="chk-coast"> Línea de costa del modelo</label>
       </fieldset>
     </section>
 
-    <section class="panel-block">
+    <section class="panel-block inspection-card">
       <h2>Bajo el cursor</h2>
       <dl class="coords">
         <dt>Coordenadas</dt>
@@ -161,6 +307,7 @@
     </section>
 
     <section class="panel-block">
+<<<<<<< Updated upstream
       <h2>Leyenda</h2>
       <div id="legend-bar" class="legend-bar" aria-hidden="true"></div>
       <div class="legend-scale"><span>0 m</span><span>1</span><span>2</span><span>3 m</span></div>
@@ -174,6 +321,8 @@
     </section>
 
     <section class="panel-block">
+=======
+>>>>>>> Stashed changes
       <h2>Impacto en el ecosistema</h2>
       <ul class="eco-list">
         <li><strong>Aves y mamíferos marinos</strong> — daño al plumaje y al pelaje, y a su regulación térmica.</li>
@@ -188,10 +337,19 @@
 
 <script src="vendor/leaflet/leaflet.js?v=4"></script>
 <script src="vendor/p5/p5.min.js?v=4"></script>
+<<<<<<< Updated upstream
 <script src="js/wavefield.js?v=5"></script>
 <script src="js/coast.js?v=4"></script>
 <script src="js/motor.js?v=5"></script>
 <script src="js/sketch.js?v=4"></script>
 <script src="js/ui.js?v=4"></script>
+=======
+<script src="js/wavefield.js?v=7"></script>
+<script src="js/coast.js?v=6"></script>
+<script src="data/coast.data.js?v=1"></script>
+<script src="js/motor.js?v=8"></script>
+<script src="js/sketch.js?v=9"></script>
+<script src="js/ui.js?v=11"></script>
+>>>>>>> Stashed changes
 </body>
 </html>
